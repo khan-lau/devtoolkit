@@ -8,11 +8,12 @@
 1. 时间戳与时间格式化工具
    - 时间戳(秒 / 毫秒) ↔ 时间字符串 双向转换, 自动识别单位
    - 当前时间实时刷新(每秒定时更新)
-2. 字符集编码转换工具 (UTF-8 / GBK / UTF-16)
+2. 字符集编码转换工具 (UTF-8 / GBK / GB18030 / Big5 / UTF-16 LE / UTF-16 BE)
    - hex 字符串 解码为指定字符集
    - 指定字符集 编码为 hex 字符串
    - hex 解码输入支持格式: 连续 hex / 空白分隔 / `0x` 前缀 (可多处重复) / `\xHH` 字节转义
    - Unicode 码点表达式 `\uXXXX` (定长4位)、`\u{...}`、`U+XXXX` 仅限 UTF-16 字符集下生效
+   - hex 解码时自动猜测编码: 基于 chardetng 启发式检测, 并列出所有可无损解码的候选编码
 3. URL 编码与解码工具 (标准表单 / RFC 3986 安全模式)
 4. Base64 编码与解码工具 (标准字符表 / URL 安全字符表)
 5. 哈希计算工具 (MD5 / SHA-1 / SHA-224 / SHA-256 / SHA-384 / SHA-512 / BLAKE2b-512 / BLAKE2s-256 / BLAKE3)
@@ -58,3 +59,8 @@
 
 程序首次运行会在可执行文件同目录生成 `langs/` 并导出内置语言文件 (如 `zh-CN.json`),
 编辑 JSON 即可修改文案, 新增 JSON 文件 (如 `de.json`) 会作为新语言出现在界面中。
+
+## 运行
+
+* MacOS 由于安全性问题, 需要手动添加应用到系统信任列表 (System Preferences -> Security & Privacy -> General -> Open where downloaded apps). 添加后即可运行。
+* 若添加后仍旧不可运行, 需要手工执行 `sudo xattr -n com.apple.quarantine -rd <path_to_executable>` 来移除 quarantine 属性。

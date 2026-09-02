@@ -14,8 +14,8 @@ use crate::theme;
 enum Charset {
     Utf8,
     Gbk,
-    /// GB18030: 完整覆盖 Unicode(含 4 字节扩展序列)
-    Gb18030,
+    Gb18030, /// GB18030: 完整覆盖 Unicode(含 4 字节扩展序列)
+    Big5,    /// Big5: 繁体中文编码
     Utf16Le,
     Utf16Be,
 }
@@ -26,6 +26,7 @@ impl Charset {
             Charset::Utf8 => "UTF-8",
             Charset::Gbk => "GBK",
             Charset::Gb18030 => "GB18030",
+            Charset::Big5 => "Big5",
             Charset::Utf16Le => "UTF-16 LE",
             Charset::Utf16Be => "UTF-16 BE",
         }
@@ -139,6 +140,9 @@ impl EncodingTool {
                             {
                                 self.charset = Charset::Gb18030;
                             }
+                            if theme::selectable_label(ui, self.charset == Charset::Big5, "Big5") {
+                                self.charset = Charset::Big5;
+                            }
                             if theme::selectable_label(ui, self.charset == Charset::Utf16Le, "UTF-16 LE")
                             {
                                 self.charset = Charset::Utf16Le;
@@ -165,6 +169,7 @@ impl EncodingTool {
             Status::Warn(key) => {
                 let text = match key {
                     "replace" => &t.enc_warn_replace,
+                    "big5" => &t.enc_warn_big5,
                     _ => &t.enc_warn_gbk,
                 };
                 ui.colored_label(theme::WARN, text);
@@ -412,6 +417,11 @@ fn append_char_bytes(out: &mut Vec<u8>, c: char, charset: Charset) {
             let (b, _, _) = encoding_rs::GB18030.encode(&s);
             out.extend_from_slice(&b);
         }
+        Charset::Big5 => {
+            let s = c.to_string();
+            let (b, _, _) = encoding_rs::BIG5.encode(&s);
+            out.extend_from_slice(&b);
+        }
         Charset::Utf16Le => {
             let mut buf = [0u16; 2];
             for u in c.encode_utf16(&mut buf) {
@@ -457,6 +467,11 @@ fn decode_hex(input: &str, charset: Charset) -> (String, Status, Vec<&'static st
             let status = had_errors.then_some(Status::Warn("replace")).unwrap_or(Status::Idle);
             (text.into_owned(), status)
         }
+        Charset::Big5 => {
+            let (text, _, had_errors) = encoding_rs::BIG5.decode(&bytes);
+            let status = had_errors.then_some(Status::Warn("replace")).unwrap_or(Status::Idle);
+            (text.into_owned(), status)
+        }
         Charset::Utf16Le => {
             let data = strip_bom(&bytes, [0xFF, 0xFE]);
             match utf16_bytes_to_string(data, u16::from_le_bytes) {
@@ -479,9 +494,12 @@ fn decode_hex(input: &str, charset: Charset) -> (String, Status, Vec<&'static st
 /// 参与"可能编码"展示的多字节编码
 ///
 /// 单字节编码(如 windows-1252)可无损解码任意字节序列, 列出来没有区分意义, 故排除。
+/// GBK 与 GB18030 的解码器相同, 会在 [`possible_encodings`] 中按数据是否含
+/// 4 字节扩展序列二选一, 避免重复列出。
 const MULTIBYTE_ENCODINGS: &[&encoding_rs::Encoding] = &[
     encoding_rs::UTF_8,
     encoding_rs::GBK,
+    encoding_rs::GB18030,
     encoding_rs::BIG5,
     encoding_rs::EUC_KR,
     encoding_rs::SHIFT_JIS,
@@ -494,20 +512,81 @@ fn possible_encodings(bytes: &[u8]) -> Vec<&'static str> {
     let mut list: Vec<&'static str> = MULTIBYTE_ENCODINGS
         .iter()
         .filter(|enc| enc.decode_without_bom_handling_and_without_replacement(bytes).is_some())
-        .map(|enc| enc.name())
+        .map(|enc| {
+            let name = enc.name();
+            // GB18030 的规范名为小写 "gb18030", 展示时统一为大写
+            if name == "gb18030" { "GB18030" } else { name }
+        })
         .collect();
-    // 带 BOM 时补充 UTF-16 (chardetng 不识别 BOM)
+    // GBK 与 GB18030 的解码器相同, 二者总会同时通过验证; 按数据是否含
+    // 4 字节扩展序列保留更精确的一个, 避免冗余。
+    if list.iter().any(|&e| e == "GBK") && list.iter().any(|&e| e == "GB18030") {
+        if is_gb18030_ext(bytes) {
+            list.retain(|&e| e != "GBK");
+        } else {
+            list.retain(|&e| e != "GB18030");
+        }
+    }
+    // UTF-16 的"无损解码"验证无区分度(任意偶数长度的字节序列都能解码), 不能靠
+    // 解码验证识别; 带 BOM 时直接识别, 无 BOM 时用 NUL 字节占比启发式补充。
     if bytes.starts_with(&[0xFF, 0xFE]) {
         list.push("UTF-16LE");
     } else if bytes.starts_with(&[0xFE, 0xFF]) {
         list.push("UTF-16BE");
+    } else if !bytes.is_empty() && bytes.len() % 2 == 0 {
+        // 无 BOM: ASCII/半角混合的 UTF-16 文本中 NUL 字节占比约 50%, 据此识别
+        let nul = bytes.iter().filter(|&&b| b == 0).count();
+        if nul * 4 >= bytes.len() {
+            // 按 NUL 出现位置判断字节序: LE 的 NUL 落在奇数位, BE 落在偶数位
+            let odd_nul = bytes
+                .iter()
+                .enumerate()
+                .filter(|&(i, b)| i % 2 == 1 && *b == 0)
+                .count();
+            if odd_nul * 2 >= nul {
+                list.push("UTF-16LE");
+            } else {
+                list.push("UTF-16BE");
+            }
+        }
     }
     // chardetng 最佳猜测置顶
     if let Some(best) = guess_encoding(bytes) {
+        // chardetng 不识别 GB18030(只认 GBK): 数据实为 4 字节扩展时修正猜测
+        let best = if best == "GBK" && list.contains(&"GB18030") {
+            "GB18030"
+        } else {
+            best
+        };
         list.retain(|&e| e != best);
         list.insert(0, best);
     }
     list
+}
+
+/// 检测字节序列中是否包含 GB18030 的 4 字节扩展序列
+///
+/// GB18030 4 字节序列格式: 0x81-0xFE + 0x30-0x39 + 0x81-0xFE + 0x30-0x39。
+/// GBK 2 字节序列的 trail 范围为 0x40-0xFE(除 0x7F), 与 4 字节序列的第二个
+/// 字节 0x30-0x39 范围不重叠, 因此从 lead 字节即可直接判断序列类型。
+fn is_gb18030_ext(bytes: &[u8]) -> bool {
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b >= 0x81 && b <= 0xFE {
+            if i + 3 < bytes.len()
+                && (0x30..=0x39).contains(&bytes[i + 1])
+                && (0x81..=0xFE).contains(&bytes[i + 2])
+                && (0x30..=0x39).contains(&bytes[i + 3])
+            {
+                return true;
+            }
+            i += 2; // 2 字节 GBK 序列
+        } else {
+            i += 1;
+        }
+    }
+    false
 }
 
 /// 使用 chardetng 启发式猜测字节序列的最佳编码
@@ -534,6 +613,10 @@ fn encode_hex(text: &str, charset: Charset) -> (String, Status) {
             // GB18030 编码器覆盖全部 Unicode, 不会出现无法表示的字符
             let (bytes, _, had_errors) = encoding_rs::GB18030.encode(text);
             (bytes.into_owned(), had_errors.then_some("gbk"))
+        }
+        Charset::Big5 => {
+            let (bytes, _, had_errors) = encoding_rs::BIG5.encode(text);
+            (bytes.into_owned(), had_errors.then_some("big5"))
         }
         Charset::Utf16Le => (
             text.encode_utf16().flat_map(u16::to_le_bytes).collect(),
@@ -702,6 +785,27 @@ mod tests {
     }
 
     #[test]
+    fn possible_encodings_reports_gb18030() {
+        // emoji 的 GB18030 4 字节扩展编码: 应报告 GB18030 而非 GBK
+        let (hex, _) = encode_hex("😀", Charset::Gb18030);
+        let (_, _, list) = decode_hex(&hex, Charset::Gb18030);
+        assert!(list.contains(&"GB18030"), "list={list:?}");
+        assert!(!list.contains(&"GBK"), "list={list:?}");
+
+        // 纯 2 字节 GBK 数据: 应报告 GBK 而非 GB18030, 两者不冗余
+        let (hex, _) = encode_hex("中文", Charset::Gb18030);
+        let (_, _, list) = decode_hex(&hex, Charset::Gb18030);
+        assert!(list.contains(&"GBK"), "list={list:?}");
+        assert!(!list.contains(&"GB18030"), "list={list:?}");
+
+        // U+20000 同为 4 字节扩展
+        let (hex, _) = encode_hex("\u{20000}", Charset::Gb18030);
+        let (_, _, list) = decode_hex(&hex, Charset::Gb18030);
+        assert!(list.contains(&"GB18030"), "list={list:?}");
+        assert!(!list.contains(&"GBK"), "list={list:?}");
+    }
+
+    #[test]
     fn decode_hex_reports_guess() {
         // UTF-8 中文 hex
         let (text, status, possible) = decode_hex("E4B8ADE69687", Charset::Utf8);
@@ -754,5 +858,48 @@ mod tests {
         assert_eq!(text, "中文");
         // \u 转义仍仅限 UTF-16, GB18030 与 GBK 一致
         assert_eq!(hex_to_bytes(r"\u4F60", Charset::Gb18030), Err(EncErr::EscapeUtf16Only));
+    }
+
+    #[test]
+    fn big5_roundtrip() {
+        // 繁体中文往返
+        let (hex, status) = encode_hex("中文測試", Charset::Big5);
+        assert_eq!(status, Status::Idle);
+        let (text, status2, _) = decode_hex(&hex, Charset::Big5);
+        assert_eq!(status2, Status::Idle);
+        assert_eq!(text, "中文測試");
+
+        // emoji 无法用 Big5 表示(警告)
+        assert_eq!(encode_hex("😀", Charset::Big5).1, Status::Warn("big5"));
+
+        // \u 转义仍仅限 UTF-16
+        assert_eq!(hex_to_bytes(r"\u4E2D", Charset::Big5), Err(EncErr::EscapeUtf16Only));
+    }
+
+    #[test]
+    fn possible_encodings_detects_utf16_without_bom() {
+        // 无 BOM UTF-16LE 的 ASCII 文本: NUL 字节占比高, 应识别为 UTF-16LE
+        let le = "hello".encode_utf16().flat_map(u16::to_le_bytes).collect::<Vec<u8>>();
+        let list = possible_encodings(&le);
+        assert!(list.contains(&"UTF-16LE"), "list={list:?}");
+        assert!(!list.contains(&"UTF-16BE"), "list={list:?}");
+
+        // 无 BOM UTF-16BE 的 ASCII 文本: 应识别为 UTF-16BE
+        let be = "hello".encode_utf16().flat_map(u16::to_be_bytes).collect::<Vec<u8>>();
+        let list = possible_encodings(&be);
+        assert!(list.contains(&"UTF-16BE"), "list={list:?}");
+        assert!(!list.contains(&"UTF-16LE"), "list={list:?}");
+
+        // 带 BOM 的 UTF-16LE 走 BOM 识别分支, 同样正确
+        let mut bom = vec![0xFF, 0xFE];
+        bom.extend_from_slice(&le);
+        let list = possible_encodings(&bom);
+        assert!(list.contains(&"UTF-16LE"), "list={list:?}");
+
+        // 纯中文无 BOM UTF-16LE: NUL 占比过低, 不强行猜测(检测的根本盲区)
+        let cn = "中文".encode_utf16().flat_map(u16::to_le_bytes).collect::<Vec<u8>>();
+        let list = possible_encodings(&cn);
+        assert!(!list.contains(&"UTF-16LE"), "list={list:?}");
+        assert!(!list.contains(&"UTF-16BE"), "list={list:?}");
     }
 }
