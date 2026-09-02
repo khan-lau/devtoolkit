@@ -21,6 +21,16 @@ enum Charset {
 }
 
 impl Charset {
+    /// 所有字符集(UI 展示顺序)
+    const ALL: [Charset; 6] = [
+        Charset::Utf8,
+        Charset::Gbk,
+        Charset::Gb18030,
+        Charset::Big5,
+        Charset::Utf16Le,
+        Charset::Utf16Be,
+    ];
+
     fn name(self) -> &'static str {
         match self {
             Charset::Utf8 => "UTF-8",
@@ -119,47 +129,21 @@ impl EncodingTool {
         self.update_decode();
         self.update_encode();
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new(&t.enc_title).size(20.0).strong());
-            ui.add_space(8.0);
-            theme::card(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(&t.enc_charset);
-                    egui::ComboBox::from_id_salt("charset")
-                        .selected_text(self.charset.name())
-                        .show_ui(ui, |ui| {
-                            if theme::selectable_label(ui, self.charset == Charset::Utf8, "UTF-8")
-                            {
-                                self.charset = Charset::Utf8;
-                            }
-                            if theme::selectable_label(ui, self.charset == Charset::Gbk, "GBK") {
-                                self.charset = Charset::Gbk;
-                            }
-                            if theme::selectable_label(ui, self.charset == Charset::Gb18030, "GB18030")
-                            {
-                                self.charset = Charset::Gb18030;
-                            }
-                            if theme::selectable_label(ui, self.charset == Charset::Big5, "Big5") {
-                                self.charset = Charset::Big5;
-                            }
-                            if theme::selectable_label(ui, self.charset == Charset::Utf16Le, "UTF-16 LE")
-                            {
-                                self.charset = Charset::Utf16Le;
-                            }
-                            if theme::selectable_label(ui, self.charset == Charset::Utf16Be, "UTF-16 BE")
-                            {
-                                self.charset = Charset::Utf16Be;
-                            }
-                        });
-                });
-            });
-            ui.add_space(12.0);
-            theme::card(ui, |ui| self.section_decode(ui));
-            ui.add_space(12.0);
-            theme::card(ui, |ui| self.section_encode(ui));
-            ui.add_space(8.0);
+        theme::card(ui, |ui| {
+            let names: Vec<&str> = Charset::ALL.iter().map(|c| c.name()).collect();
+            let selected = Charset::ALL
+                .iter()
+                .position(|&c| c == self.charset)
+                .unwrap_or(0);
+            if let Some(i) = theme::chip_group(ui, &t.enc_charset, selected, &names) {
+                self.charset = Charset::ALL[i];
+            }
+            theme::hint_text(ui, &t.enc_hex_note);
         });
+        theme::card_gap(ui);
+        theme::card(ui, |ui| self.section_decode(ui));
+        theme::card_gap(ui);
+        theme::card(ui, |ui| self.section_encode(ui));
     }
 
     /// 渲染状态提示(警告/错误)
@@ -172,10 +156,10 @@ impl EncodingTool {
                     "big5" => &t.enc_warn_big5,
                     _ => &t.enc_warn_gbk,
                 };
-                ui.colored_label(theme::WARN, text);
+                theme::status(ui, theme::Level::Warn, text);
             }
             Status::Err(e) => {
-                ui.colored_label(theme::ERROR, e.msg(t));
+                theme::status(ui, theme::Level::Error, &e.msg(t));
             }
         }
     }
@@ -184,73 +168,59 @@ impl EncodingTool {
     fn section_decode(&mut self, ui: &mut egui::Ui) {
         let t = self.t.clone();
         theme::section_title(ui, &t.enc_decode);
+        ui.add_space(6.0);
 
-        ui.add(
-            egui::TextEdit::singleline(&mut self.hex_input)
-                .hint_text(t.enc_hint_hex.clone())
-                .margin(egui::Margin::symmetric(8, 14))
-                .desired_width(f32::INFINITY)
-                .vertical_align(egui::Align::Center),
-        );
+        theme::field_label(ui, &t.enc_hex);
+        theme::text_area(ui, &mut self.hex_input, &t.enc_hint_hex, 3, true);
 
         Self::status_line(ui, &t, self.decode_status);
 
         // 编码猜测: 第一项为 chardetng 最佳猜测, 其余为可无损解码的其他候选
         if let Some((best, rest)) = self.decode_possible.split_first() {
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new(&t.enc_guess).weak());
-                ui.label(egui::RichText::new(*best).strong().color(theme::ACCENT));
+            let p = theme::pal(ui);
+            ui.horizontal_wrapped(|ui| {
+                ui.spacing_mut().item_spacing.x = 6.0;
+                theme::field_label(ui, &t.enc_guess);
+                ui.label(theme::weighted(*best, 13.0, 600.0).color(p.accent));
+                if !rest.is_empty() {
+                    ui.label(
+                        egui::RichText::new(format!("· {}: {}", t.enc_guess_alt, rest.join(", ")))
+                            .size(12.5)
+                            .color(p.text_faint),
+                    );
+                }
             });
-            if !rest.is_empty() {
-                let detail = format!("{}: {}", t.enc_guess_alt, rest.join(", "));
-                ui.label(egui::RichText::new(detail).weak());
-            }
         }
 
-        ui.label(&t.enc_text);
-        ui.add(
-            egui::TextEdit::multiline(&mut self.decoded)
-                .desired_rows(4)
-                .desired_width(f32::INFINITY),
-        );
-        if !self.decoded.is_empty() {
-            theme::copy_button(ui, &t.enc_copy, &self.decoded);
-        }
+        ui.add_space(6.0);
+        theme::output_header(ui, &t.enc_text, &t.enc_copy, &self.decoded, |_| {});
+        theme::text_area(ui, &mut self.decoded, "", 3, false);
     }
 
     /// 文本 -> hex 区
     fn section_encode(&mut self, ui: &mut egui::Ui) {
         let t = self.t.clone();
         theme::section_title(ui, &t.enc_encode);
+        ui.add_space(6.0);
 
-        ui.add(
-            egui::TextEdit::singleline(&mut self.text_input)
-                .hint_text(t.enc_hint_text.clone())
-                .margin(egui::Margin::symmetric(8, 18))
-                .desired_width(f32::INFINITY)
-                .vertical_align(egui::Align::Center),
-        );
+        theme::field_label(ui, &t.enc_text);
+        theme::text_area(ui, &mut self.text_input, &t.enc_hint_text, 3, false);
 
         Self::status_line(ui, &t, self.encode_status);
 
-        ui.label(&t.enc_hex);
-        ui.add(
-            egui::TextEdit::multiline(&mut self.encoded)
-                .desired_rows(4)
-                .desired_width(f32::INFINITY),
-        );
-
-        ui.horizontal(|ui| {
-            if !self.encoded.is_empty() {
-                theme::copy_button(ui, &t.enc_copy, &self.encoded);
-            }
+        ui.add_space(6.0);
+        let decoded = self.decoded.clone();
+        let mut use_decoded = false;
+        theme::output_header(ui, &t.enc_hex, &t.enc_copy, &self.encoded, |ui| {
             // 操作优化: 将解码结果填入文本输入框, 便于继续编辑/重新编码
-            if !self.decoded.is_empty() {
-                if ui.button(&t.enc_fill_text).clicked() {
-                    self.text_input = self.decoded.clone();
-                }
+            if !decoded.is_empty() && theme::button(ui, &t.enc_fill_text).clicked() {
+                use_decoded = true;
             }
         });
+        if use_decoded {
+            self.text_input = decoded;
+        }
+        theme::text_area(ui, &mut self.encoded, "", 3, true);
     }
 
     /// 输入变化时重新计算 hex -> 文本

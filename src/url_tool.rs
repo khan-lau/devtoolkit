@@ -63,61 +63,35 @@ impl UrlTool {
         let t = self.t.clone();
         self.update();
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new(&t.url_title).size(20.0).strong());
-            ui.add_space(8.0);
-
-            theme::card(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(&t.url_mode);
-                    if theme::selectable_label(ui, self.mode == UrlMode::Std, &t.url_mode_std) {
-                        self.mode = UrlMode::Std;
-                    }
-                    if theme::selectable_label(ui, self.mode == UrlMode::Safe, &t.url_mode_safe) {
-                        self.mode = UrlMode::Safe;
-                    }
-                });
-            });
-            ui.add_space(12.0);
-
-            theme::card(ui, |ui| {
-                ui.label(&t.gen_input);
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.input)
-                        .hint_text(t.url_hint.clone())
-                        .margin(egui::Margin::symmetric(8, 14))
-                        .desired_width(f32::INFINITY)
-                        .vertical_align(egui::Align::Center),
-                );
-
-                ui.horizontal(|ui| {
-                    if ui.button(&t.gen_encode).clicked() {
-                        self.set_action(Action::Encode);
-                    }
-                    if ui.button(&t.gen_decode).clicked() {
-                        self.set_action(Action::Decode);
-                    }
-                });
-
-                if self.warn {
-                    ui.colored_label(theme::WARN, &t.url_warn_invalid);
+        theme::card(ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                theme::field_label(ui, &t.url_mode);
+                ui.add_space(4.0);
+                let mode = if self.mode == UrlMode::Std { 0 } else { 1 };
+                if let Some(i) = theme::segmented(ui, mode, &[&t.url_mode_std, &t.url_mode_safe]) {
+                    self.mode = if i == 0 { UrlMode::Std } else { UrlMode::Safe };
                 }
-
-                ui.label(&t.gen_output);
-                ui.add(
-                    egui::TextEdit::multiline(&mut self.output)
-                        .desired_rows(4)
-                        .desired_width(f32::INFINITY),
-                );
-
-                ui.horizontal(|ui| {
-                    if !self.output.is_empty() {
-                        theme::copy_button(ui, &t.gen_copy, &self.output);
-                    }
-                });
+                ui.add_space(16.0);
+                let action = if self.action == Action::Encode { 0 } else { 1 };
+                if let Some(i) = theme::segmented(ui, action, &[&t.gen_encode, &t.gen_decode]) {
+                    self.set_action(if i == 0 { Action::Encode } else { Action::Decode });
+                }
             });
-            ui.add_space(8.0);
+            theme::hint_text(ui, &t.url_note);
+        });
+        theme::card_gap(ui);
+
+        theme::card(ui, |ui| {
+            theme::field_label(ui, &t.gen_input);
+            theme::text_area(ui, &mut self.input, &t.url_hint, 3, false);
+
+            if self.warn {
+                theme::status(ui, theme::Level::Warn, &t.url_warn_invalid);
+            }
+
+            ui.add_space(6.0);
+            theme::output_header(ui, &t.gen_output, &t.gen_copy, &self.output, |_| {});
+            theme::text_area(ui, &mut self.output, "", 4, true);
         });
     }
 

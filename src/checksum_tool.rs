@@ -147,61 +147,32 @@ impl ChecksumTool {
         let t = self.t.clone();
         self.update();
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new(&t.checksum_title).size(20.0).strong());
-            ui.add_space(8.0);
+        theme::card(ui, |ui| {
+            let names: Vec<&str> = ChecksumAlgo::ALL.iter().map(|a| a.name()).collect();
+            let selected = ChecksumAlgo::ALL
+                .iter()
+                .position(|&a| a == self.algo)
+                .unwrap_or(0);
+            if let Some(i) = theme::chip_group(ui, &t.checksum_algorithm, selected, &names) {
+                self.algo = ChecksumAlgo::ALL[i];
+            }
+        });
+        theme::card_gap(ui);
 
-            theme::card(ui, |ui| {
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(&t.checksum_algorithm);
-                    for algo in ChecksumAlgo::ALL {
-                        if theme::selectable_label(ui, self.algo == algo, algo.name()) {
-                            self.algo = algo;
-                        }
-                    }
-                });
-            });
-            ui.add_space(12.0);
+        theme::card(ui, |ui| {
+            theme::field_label(ui, &t.gen_input);
+            theme::text_area(ui, &mut self.input, &t.checksum_hint, 3, false);
 
-            theme::card(ui, |ui| {
-                ui.label(&t.gen_input);
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.input)
-                        .hint_text(t.checksum_hint.clone())
-                        .margin(egui::Margin::symmetric(8, 14))
-                        .desired_width(f32::INFINITY)
-                        .vertical_align(egui::Align::Center),
-                );
-
-                // HMAC 算法需要密钥输入
-                if self.algo.is_hmac() {
-                    ui.add_space(6.0);
-                    ui.label(&t.checksum_key);
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.key)
-                            .hint_text(t.checksum_key.clone())
-                            .margin(egui::Margin::symmetric(8, 14))
-                            .desired_width(f32::INFINITY)
-                            .vertical_align(egui::Align::Center),
-                    );
-                }
-
+            // HMAC 算法需要密钥输入
+            if self.algo.is_hmac() {
                 ui.add_space(6.0);
-                ui.label(&t.gen_output);
-                ui.add(
-                    egui::TextEdit::multiline(&mut self.output)
-                        .desired_rows(4)
-                        .desired_width(f32::INFINITY),
-                );
+                theme::field_label(ui, &t.checksum_key);
+                theme::text_input(ui, &mut self.key, &t.checksum_key, f32::INFINITY);
+            }
 
-                ui.horizontal(|ui| {
-                    if !self.output.is_empty() {
-                        theme::copy_button(ui, &t.gen_copy, &self.output);
-                    }
-                });
-            });
-            ui.add_space(8.0);
+            ui.add_space(6.0);
+            theme::output_header(ui, &t.gen_output, &t.gen_copy, &self.output, |_| {});
+            theme::text_area(ui, &mut self.output, "", 2, true);
         });
     }
 
