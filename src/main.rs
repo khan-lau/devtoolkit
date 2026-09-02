@@ -43,46 +43,73 @@ fn main() -> eframe::Result {
 }
 
 /// 加载系统中文字体, 确保中文界面正常显示
+///
+/// 主字体(微软雅黑/苹方等)覆盖 BMP 区中文; 部分字体补充 CJK 扩展 B 区字形
+/// (如 U+20000 等生僻字), 避免渲染为缺字占位符"口"。
 fn setup_fonts(ctx: &eframe::egui::Context) {
-    let candidates: &[&str] = if cfg!(target_os = "windows") {
-        &[
-            r"C:\Windows\Fonts\msyh.ttc",
-            r"C:\Windows\Fonts\simhei.ttf",
-            r"C:\Windows\Fonts\simsun.ttc",
-        ]
+    // (主中文字体候选, CJK 扩展 B 区字体候选)
+    let (main_candidates, extb_candidates): (&[&str], &[&str]) = if cfg!(target_os = "windows") {
+        (
+            &[
+                r"C:\Windows\Fonts\msyh.ttc",     // 微软雅黑 (Win7+ 默认)
+                r"C:\Windows\Fonts\simsun.ttc",   // 宋体 (系统核心字体, 精简版通常保留)
+                r"C:\Windows\Fonts\simhei.ttf",   // 黑体
+                r"C:\Windows\Fonts\Deng.ttf",     // 等线 (Win8+ 默认 UI 字体)
+                r"C:\Windows\Fonts\MingLiU.ttc",  // 細明體 (繁体系统)
+                r"C:\Windows\Fonts\PMingLiU.ttc", // 新細明體 (繁体系统)
+                r"C:\Windows\Fonts\msjh.ttc",     // 微軟正黑體 (繁体系统)
+                r"C:\Windows\Fonts\simkai.ttf",   // 楷体
+                r"C:\Windows\Fonts\simfang.ttf",  // 仿宋
+            ],
+            &[r"C:\Windows\Fonts\simsunb.ttf"],
+        )
     } else if cfg!(target_os = "macos") {
-        &[
-            "/System/Library/Fonts/PingFang.ttc",
-            "/System/Library/Fonts/Hiragino Sans GB.ttc",
-            "/System/Library/Fonts/STHeiti Light.ttc",
-        ]
+        (
+            &[
+                "/System/Library/Fonts/PingFang.ttc",
+                "/System/Library/Fonts/Hiragino Sans GB.ttc",
+                "/System/Library/Fonts/STHeiti Light.ttc",
+            ],
+            &[
+                "/System/Library/Fonts/Songti.ttc",
+                "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+            ],
+        )
     } else {
-        &[
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-            "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
-            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-            "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-        ]
+        (
+            &[
+                "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+                "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+                "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+            ],
+            &[], // Noto Sans CJK 等已覆盖较广, 无专门扩展字体
+        )
     };
-
-    let Some(path) = candidates.iter().find(|p| Path::new(p).exists()) else {
-        return; // 未找到中文字体时保持默认字体
-    };
-    let Ok(data) = std::fs::read(path) else { return };
 
     let mut fonts = eframe::egui::FontDefinitions::default();
-    fonts
-        .font_data
-        .insert("chinese".to_owned(), eframe::egui::FontData::from_owned(data).into());
+    let mut loaded: Vec<String> = Vec::new();
+
+    for (label, candidates) in [("chinese", main_candidates), ("chinese_extb", extb_candidates)] {
+        let Some(path) = candidates.iter().find(|p| Path::new(p).exists()) else {
+            continue;
+        };
+        let Ok(data) = std::fs::read(path) else { continue };
+        fonts
+            .font_data
+            .insert(label.to_owned(), eframe::egui::FontData::from_owned(data).into());
+        loaded.push(label.to_owned());
+    }
+    if loaded.is_empty() {
+        return; // 未找到中文字体时保持默认字体
+    }
+
     for family in [
         eframe::egui::FontFamily::Proportional,
         eframe::egui::FontFamily::Monospace,
     ] {
-        fonts
-            .families
-            .entry(family)
-            .or_default()
-            .push("chinese".to_owned());
+        let list = fonts.families.entry(family).or_default();
+        list.extend(loaded.iter().cloned());
     }
     ctx.set_fonts(fonts);
 }

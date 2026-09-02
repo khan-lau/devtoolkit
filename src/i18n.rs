@@ -96,6 +96,10 @@ pub struct Texts {
     pub enc_err_utf16_pair: String,
     pub enc_warn_replace: String,
     pub enc_warn_gbk: String,
+    /// hex 解码时的编码猜测提示
+    pub enc_guess: String,
+    /// 除最佳猜测外的其他可能编码
+    pub enc_guess_alt: String,
 
     // 通用编解码文案(URL / Base64 工具共用)
     pub gen_encode: String,
@@ -336,6 +340,8 @@ fn zh_cn() -> Texts {
         enc_err_utf16_pair: "UTF-16 解码失败: 包含无效的代理项".into(),
         enc_warn_replace: "存在无法解码的字节, 已用 U+FFFD 替换".into(),
         enc_warn_gbk: "部分字符无法用 GBK 表示, 已用替代字符替换".into(),
+        enc_guess: "猜测编码".into(),
+        enc_guess_alt: "其他可能".into(),
         gen_encode: "编码".into(),
         gen_decode: "解码".into(),
         gen_input: "输入".into(),
@@ -427,6 +433,8 @@ fn zh_tw() -> Texts {
         enc_err_utf16_pair: "UTF-16 解碼失敗: 包含無效的代理項".into(),
         enc_warn_replace: "存在無法解碼的位元組, 已以 U+FFFD 替換".into(),
         enc_warn_gbk: "部分字元無法以 GBK 表示, 已以替代字元替換".into(),
+        enc_guess: "猜測編碼".into(),
+        enc_guess_alt: "其他可能".into(),
         gen_encode: "編碼".into(),
         gen_decode: "解碼".into(),
         gen_input: "輸入".into(),
@@ -518,6 +526,8 @@ fn en() -> Texts {
         enc_err_utf16_pair: "UTF-16 decode failed: invalid surrogate pair".into(),
         enc_warn_replace: "Some bytes could not be decoded, replaced with U+FFFD".into(),
         enc_warn_gbk: "Some characters cannot be represented in GBK, replaced with fallback".into(),
+        enc_guess: "Detected encoding".into(),
+        enc_guess_alt: "Other possibilities".into(),
         gen_encode: "Encode".into(),
         gen_decode: "Decode".into(),
         gen_input: "Input".into(),
@@ -609,6 +619,8 @@ fn ja() -> Texts {
         enc_err_utf16_pair: "UTF-16 デコード失敗: 無効なサロゲートペア".into(),
         enc_warn_replace: "デコードできないバイトを U+FFFD に置換しました".into(),
         enc_warn_gbk: "GBK で表現できない文字を代替文字に置換しました".into(),
+        enc_guess: "推定エンコーディング".into(),
+        enc_guess_alt: "その他の可能性".into(),
         gen_encode: "エンコード".into(),
         gen_decode: "デコード".into(),
         gen_input: "入力".into(),

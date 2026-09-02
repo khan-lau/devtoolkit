@@ -14,6 +14,8 @@ use crate::theme;
 enum Charset {
     Utf8,
     Gbk,
+    /// GB18030: 完整覆盖 Unicode(含 4 字节扩展序列)
+    Gb18030,
     Utf16Le,
     Utf16Be,
 }
@@ -23,6 +25,7 @@ impl Charset {
         match self {
             Charset::Utf8 => "UTF-8",
             Charset::Gbk => "GBK",
+            Charset::Gb18030 => "GB18030",
             Charset::Utf16Le => "UTF-16 LE",
             Charset::Utf16Be => "UTF-16 BE",
         }
@@ -76,6 +79,8 @@ pub struct EncodingTool {
     hex_input: String,
     decoded: String,
     decode_status: Status,
+    /// 可能的编码列表: 第一项为 chardetng 最佳猜测, 其余为可无损解码的候选 (空表示无法猜测)
+    decode_possible: Vec<&'static str>,
     decode_last_key: (Charset, String),
 
     // 文本 -> hex
@@ -93,6 +98,7 @@ impl EncodingTool {
             hex_input: String::new(),
             decoded: String::new(),
             decode_status: Status::Idle,
+            decode_possible: Vec::new(),
             decode_last_key: (Charset::Utf8, String::new()),
             text_input: String::new(),
             encoded: String::new(),
@@ -128,6 +134,10 @@ impl EncodingTool {
                             }
                             if theme::selectable_label(ui, self.charset == Charset::Gbk, "GBK") {
                                 self.charset = Charset::Gbk;
+                            }
+                            if theme::selectable_label(ui, self.charset == Charset::Gb18030, "GB18030")
+                            {
+                                self.charset = Charset::Gb18030;
                             }
                             if theme::selectable_label(ui, self.charset == Charset::Utf16Le, "UTF-16 LE")
                             {
@@ -179,6 +189,18 @@ impl EncodingTool {
         );
 
         Self::status_line(ui, &t, self.decode_status);
+
+        // 编码猜测: 第一项为 chardetng 最佳猜测, 其余为可无损解码的其他候选
+        if let Some((best, rest)) = self.decode_possible.split_first() {
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new(&t.enc_guess).weak());
+                ui.label(egui::RichText::new(*best).strong().color(theme::ACCENT));
+            });
+            if !rest.is_empty() {
+                let detail = format!("{}: {}", t.enc_guess_alt, rest.join(", "));
+                ui.label(egui::RichText::new(detail).weak());
+            }
+        }
 
         ui.label(&t.enc_text);
         ui.add(
@@ -234,9 +256,10 @@ impl EncodingTool {
         }
         self.decode_last_key = key;
 
-        let (text, status) = decode_hex(&self.hex_input, self.charset);
+        let (text, status, possible) = decode_hex(&self.hex_input, self.charset);
         self.decoded = text;
         self.decode_status = status;
+        self.decode_possible = possible;
     }
 
     /// 输入变化时重新计算 文本 -> hex
@@ -384,6 +407,11 @@ fn append_char_bytes(out: &mut Vec<u8>, c: char, charset: Charset) {
             let (b, _, _) = encoding_rs::GBK.encode(&s);
             out.extend_from_slice(&b);
         }
+        Charset::Gb18030 => {
+            let s = c.to_string();
+            let (b, _, _) = encoding_rs::GB18030.encode(&s);
+            out.extend_from_slice(&b);
+        }
         Charset::Utf16Le => {
             let mut buf = [0u16; 2];
             for u in c.encode_utf16(&mut buf) {
@@ -400,16 +428,19 @@ fn append_char_bytes(out: &mut Vec<u8>, c: char, charset: Charset) {
 }
 
 /// 按指定字符集将 hex 字符串解码为文本
-fn decode_hex(input: &str, charset: Charset) -> (String, Status) {
+///
+/// 返回值: (解码文本, 状态, 可能的编码列表)
+/// 可能的编码列表: 第一项为 chardetng 最佳猜测, 其余为能无损解码该字节序列的候选编码。
+fn decode_hex(input: &str, charset: Charset) -> (String, Status, Vec<&'static str>) {
     let bytes = match hex_to_bytes(input, charset) {
         Ok(bytes) => bytes,
-        Err(e) => return (String::new(), Status::Err(e)),
+        Err(e) => return (String::new(), Status::Err(e), Vec::new()),
     };
     if bytes.is_empty() {
-        return (String::new(), Status::Idle);
+        return (String::new(), Status::Idle, Vec::new());
     }
 
-    match charset {
+    let (text, status) = match charset {
         Charset::Utf8 => {
             let (text, _, had_errors) = encoding_rs::UTF_8.decode(&bytes);
             let status = had_errors.then_some(Status::Warn("replace")).unwrap_or(Status::Idle);
@@ -417,6 +448,12 @@ fn decode_hex(input: &str, charset: Charset) -> (String, Status) {
         }
         Charset::Gbk => {
             let (text, _, had_errors) = encoding_rs::GBK.decode(&bytes);
+            let status = had_errors.then_some(Status::Warn("replace")).unwrap_or(Status::Idle);
+            (text.into_owned(), status)
+        }
+        Charset::Gb18030 => {
+            // GB18030 解码器与 GBK 相同(两者互为超集/子集关系中的解码端), 可无损解码 GBK 数据
+            let (text, _, had_errors) = encoding_rs::GB18030.decode(&bytes);
             let status = had_errors.then_some(Status::Warn("replace")).unwrap_or(Status::Idle);
             (text.into_owned(), status)
         }
@@ -434,7 +471,55 @@ fn decode_hex(input: &str, charset: Charset) -> (String, Status) {
                 Err(e) => (String::new(), Status::Err(e)),
             }
         }
+    };
+
+    (text, status, possible_encodings(&bytes))
+}
+
+/// 参与"可能编码"展示的多字节编码
+///
+/// 单字节编码(如 windows-1252)可无损解码任意字节序列, 列出来没有区分意义, 故排除。
+const MULTIBYTE_ENCODINGS: &[&encoding_rs::Encoding] = &[
+    encoding_rs::UTF_8,
+    encoding_rs::GBK,
+    encoding_rs::BIG5,
+    encoding_rs::EUC_KR,
+    encoding_rs::SHIFT_JIS,
+    encoding_rs::EUC_JP,
+];
+
+/// 找出字节序列的所有可能编码: chardetng 最佳猜测排第一, 其余为能无损解码的候选
+fn possible_encodings(bytes: &[u8]) -> Vec<&'static str> {
+    // 验证各多字节编码能否无损解码
+    let mut list: Vec<&'static str> = MULTIBYTE_ENCODINGS
+        .iter()
+        .filter(|enc| enc.decode_without_bom_handling_and_without_replacement(bytes).is_some())
+        .map(|enc| enc.name())
+        .collect();
+    // 带 BOM 时补充 UTF-16 (chardetng 不识别 BOM)
+    if bytes.starts_with(&[0xFF, 0xFE]) {
+        list.push("UTF-16LE");
+    } else if bytes.starts_with(&[0xFE, 0xFF]) {
+        list.push("UTF-16BE");
     }
+    // chardetng 最佳猜测置顶
+    if let Some(best) = guess_encoding(bytes) {
+        list.retain(|&e| e != best);
+        list.insert(0, best);
+    }
+    list
+}
+
+/// 使用 chardetng 启发式猜测字节序列的最佳编码
+///
+/// 返回 WHATWG 编码标签(如 `UTF-8`、`GBK`、`Shift_JIS`), 数据过少时返回 None。
+fn guess_encoding(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.len() < 2 {
+        return None;
+    }
+    let mut detector = chardetng::EncodingDetector::new();
+    detector.feed(bytes, true);
+    Some(detector.guess(None, true).name())
 }
 
 /// 按指定字符集将文本编码为 hex 字符串
@@ -443,6 +528,11 @@ fn encode_hex(text: &str, charset: Charset) -> (String, Status) {
         Charset::Utf8 => (text.as_bytes().to_vec(), None),
         Charset::Gbk => {
             let (bytes, _, had_errors) = encoding_rs::GBK.encode(text);
+            (bytes.into_owned(), had_errors.then_some("gbk"))
+        }
+        Charset::Gb18030 => {
+            // GB18030 编码器覆盖全部 Unicode, 不会出现无法表示的字符
+            let (bytes, _, had_errors) = encoding_rs::GB18030.encode(text);
             (bytes.into_owned(), had_errors.then_some("gbk"))
         }
         Charset::Utf16Le => (
@@ -575,5 +665,94 @@ mod tests {
         assert_eq!(hex_to_bytes(r"\u{}", Charset::Utf16Le), Err(EncErr::NonHex));
         // 无效码点(超出 Unicode 范围)
         assert_eq!(hex_to_bytes(r"\u{110000}", Charset::Utf16Le), Err(EncErr::NonHex));
+    }
+
+    #[test]
+    fn guess_encoding_detects() {
+        // UTF-8 中文
+        assert_eq!(guess_encoding("中文".as_bytes()), Some("UTF-8"));
+        // 纯 ASCII(允许 UTF-8 时判为 utf-8)
+        assert_eq!(guess_encoding(b"hello"), Some("UTF-8"));
+        // GBK 中文
+        let (gbk_bytes, _, _) = encoding_rs::GBK.encode("中文");
+        assert_eq!(guess_encoding(&gbk_bytes), Some("GBK"));
+        // 数据过少无法猜测
+        assert_eq!(guess_encoding(&[0x41]), None);
+    }
+
+    #[test]
+    fn possible_encodings_lists_candidates() {
+        // GBK "你好" (C4 E3 BA C3): 字节对落在 EUC-KR 韩文区, 最佳猜测为 EUC-KR, GBK 也在候选
+        let (gbk_bytes, _, _) = encoding_rs::GBK.encode("你好");
+        let list = possible_encodings(&gbk_bytes);
+        assert_eq!(list.first(), Some(&"EUC-KR"));
+        assert!(list.contains(&"GBK"));
+        assert!(list.contains(&"EUC-KR"));
+        // UTF-8 中文: 最佳猜测为 UTF-8, 且存在其他可无损解码的候选
+        let list = possible_encodings("中文".as_bytes());
+        assert_eq!(list.first(), Some(&"UTF-8"));
+        assert!(list.len() >= 2);
+        // UTF-16LE BOM: 补充 UTF-16LE
+        let mut bom = vec![0xFF, 0xFE];
+        bom.extend_from_slice(
+            &"你".encode_utf16().flat_map(u16::to_le_bytes).collect::<Vec<u8>>(),
+        );
+        let list = possible_encodings(&bom);
+        assert!(list.contains(&"UTF-16LE"));
+    }
+
+    #[test]
+    fn decode_hex_reports_guess() {
+        // UTF-8 中文 hex
+        let (text, status, possible) = decode_hex("E4B8ADE69687", Charset::Utf8);
+        assert_eq!(text, "中文");
+        assert_eq!(status, Status::Idle);
+        assert_eq!(possible.first(), Some(&"UTF-8"));
+        // 出错时无猜测
+        let (text, status, possible) = decode_hex("4G", Charset::Utf8);
+        assert!(text.is_empty());
+        assert_eq!(status, Status::Err(EncErr::NonHex));
+        assert!(possible.is_empty());
+        // 空输入无猜测
+        let (_, _, possible) = decode_hex("", Charset::Utf8);
+        assert!(possible.is_empty());
+    }
+
+    #[test]
+    fn gb18030_roundtrip() {
+        // 简体中文往返
+        let (hex, status) = encode_hex("中文测试", Charset::Gb18030);
+        assert_eq!(status, Status::Idle);
+        let (text, status2, _) = decode_hex(&hex, Charset::Gb18030);
+        assert_eq!(status2, Status::Idle);
+        assert_eq!(text, "中文测试");
+
+        // emoji: GBK 无法表示, GB18030 通过 4 字节扩展无损往返
+        let (hex, status) = encode_hex("😀", Charset::Gb18030);
+        assert_eq!(status, Status::Idle);
+        let (text, status2, _) = decode_hex(&hex, Charset::Gb18030);
+        assert_eq!(status2, Status::Idle);
+        assert_eq!(text, "😀");
+
+        // 同一字符在 GBK 下无法表示(警告), GB18030 无警告
+        assert_eq!(encode_hex("😀", Charset::Gbk).1, Status::Warn("gbk"));
+        // CJK 扩展 B 区字符 U+20000: GB18030 使用 4 字节扩展无损往返
+        let (hex, status) = encode_hex("\u{20000}", Charset::Gb18030);
+        assert_eq!(status, Status::Idle);
+        assert_eq!(hex, "95328236");
+        let (text, status2, _) = decode_hex(&hex, Charset::Gb18030);
+        assert_eq!(status2, Status::Idle);
+        assert_eq!(text, "\u{20000}");
+    }
+
+    #[test]
+    fn gb18030_decodes_gbk_data() {
+        // GB18030 解码器是 GBK 的超集: 可无损解码 GBK 编码的数据
+        let (gbk_hex, _) = encode_hex("中文", Charset::Gbk);
+        let (text, status, _) = decode_hex(&gbk_hex, Charset::Gb18030);
+        assert_eq!(status, Status::Idle);
+        assert_eq!(text, "中文");
+        // \u 转义仍仅限 UTF-16, GB18030 与 GBK 一致
+        assert_eq!(hex_to_bytes(r"\u4F60", Charset::Gb18030), Err(EncErr::EscapeUtf16Only));
     }
 }

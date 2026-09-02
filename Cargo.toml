@@ -1,6 +1,6 @@
 [package]
 name = "devToolkit"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 authors = ["Khan.Lau <khan.lau@hotmail.com>"]
 license = "MIT"
@@ -12,6 +12,7 @@ embed-resource = "3.0" # 嵌入 Windows 应用图标 (rc.exe / windres)
 [dependencies]
 blake2 = "0.10"
 blake3 = "1"
+chardetng = "0.1"     # 编码猜测 (chardetng 启发式检测)
 chrono = "0.4.45"
 crc = "3"            # CRC 校验 (8/16/32/64)
 digest = "0.10"      # 哈希核心抽象 (HMAC 泛型依赖)
