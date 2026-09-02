@@ -73,10 +73,24 @@
   cargo zigbuild --release --target aarch64-apple-darwin        # macOS Apple Silicon 架构
 ```
 
+### macOS 安装包
+
+```bash
+  scripts/package-macos.sh                                  # 通用二进制 (Apple Silicon + Intel)
+  ARCHS="aarch64-apple-darwin" scripts/package-macos.sh     # 仅 Apple Silicon
+  SIGN_IDENTITY="Developer ID Application: ..." scripts/package-macos.sh   # 用正式证书签名
+```
+
+脚本只依赖 macOS 自带的 `lipo` / `codesign` / `hdiutil`, 产物位于 `dist/`:
+`DevToolkit.app` 与 `DevToolkit-<version>-macos.dmg`。默认为 ad-hoc 签名,
+未经公证, 首次打开需按下文"运行"一节放行。
+
 ### 语言文件
 
 程序首次运行会在可执行文件同目录生成 `langs/` 并导出内置语言文件 (如 `zh-CN.json`),
 编辑 JSON 即可修改文案, 新增 JSON 文件 (如 `de.json`) 会作为新语言出现在界面中。
+macOS 上以 `.app` 运行时, 该目录位于 `~/Library/Application Support/devToolkit/langs`
+(bundle 内部受签名保护, 不可写入)。
 
 ## 运行
 

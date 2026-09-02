@@ -1,20 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- macOS .app 的 Info.plist 模板, 由 scripts/package-macos.sh 替换 ${...} 占位符后写入 bundle -->
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
     <string>${PRODUCT_NAME}</string>
     <key>CFBundleDisplayName</key>
-    <string>${PRODUCT_NAME}</string>
+    <string>${DISPLAY_NAME}</string>
+    <key>CFBundleExecutable</key>
+    <string>${EXECUTABLE}</string>
     <key>CFBundleIdentifier</key>
-    <string>com.khan.${PRODUCT_NAME}</string>
+    <string>${BUNDLE_ID}</string>
     <key>CFBundleVersion</key>
+    <string>${CARGO_PKG_VERSION}</string>
+    <key>CFBundleShortVersionString</key>
     <string>${CARGO_PKG_VERSION}</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
     <key>CFBundleIconFile</key>
-    <string>app</string>  <!-- 对应 app.icns -->
+    <string>app</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>${MIN_SYSTEM_VERSION}</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.developer-tools</string>
     <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
     <true/>
 </dict>
 </plist>

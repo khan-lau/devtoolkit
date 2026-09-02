@@ -1,7 +1,8 @@
 //! 国际化支持
 //!
-//! 语言定义存储在可执行文件同目录的 `langs/*.json` 文件中, 用户无需修改代码即可自行翻译。
-//! 程序首次运行时自动在 exe 同级目录创建 `langs/` 并导出内置语言文件作为翻译模板。
+//! 语言定义存储在 `langs/*.json` 文件中, 用户无需修改代码即可自行翻译。
+//! 程序首次运行时自动创建 `langs/` 并导出内置语言文件作为翻译模板。
+//! 目录位置: 可执行文件同目录; macOS `.app` 运行时为 `~/Library/Application Support/devToolkit/langs`。
 //!
 //! 机制:
 //! - 内置 5 种语言(简体中文/繁体中文/英文/日文/韩文)作为默认与兜底
@@ -195,10 +196,27 @@ struct LangFile {
     texts: Texts,
 }
 
-/// 可执行文件同目录下的 `langs/` 目录
+/// 语言文件目录
+///
+/// - 默认为可执行文件同目录下的 `langs/` (便携式布局)
+/// - macOS 上以 `.app` 形式运行时, bundle 内部受代码签名保护、不可写入,
+///   改用 `~/Library/Application Support/devToolkit/langs`
 fn langs_dir() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
-    exe.parent().map(|p| p.join("langs"))
+    let exe_dir = exe.parent()?;
+
+    let in_app_bundle = cfg!(target_os = "macos")
+        && exe_dir
+            .to_str()
+            .is_some_and(|p| p.contains(".app/Contents/MacOS"));
+    if in_app_bundle {
+        let home = std::env::var_os("HOME")?;
+        return Some(
+            PathBuf::from(home)
+                .join("Library/Application Support/devToolkit/langs"),
+        );
+    }
+    Some(exe_dir.join("langs"))
 }
 
 /// 导出内置语言文件作为翻译模板
