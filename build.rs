@@ -6,6 +6,12 @@ fn main() {
     // 构建脚本 cwd 通常为 crate 根目录, 但显式使用绝对路径更健壮
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap_or_default();
     let rc_path = Path::new(&manifest_dir).join("resources.rc");
+
+    // 将目标三元组透传给程序, 供"关于"窗口展示编译信息
+    if let Ok(target) = env::var("TARGET") {
+        println!("cargo:rustc-env=BUILD_TARGET={target}");
+    }
+    println!("cargo:rerun-if-changed=build.rs");
     
     // 只在 Windows 目标下嵌入应用图标
     #[cfg(target_os = "windows")]

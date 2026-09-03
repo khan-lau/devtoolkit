@@ -59,65 +59,34 @@ impl Base64Tool {
         let t = self.t.clone();
         self.update();
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new(&t.b64_title).size(20.0).strong());
-            ui.add_space(8.0);
-
-            theme::card(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(&t.b64_alphabet);
-                    if theme::selectable_label(ui, self.alphabet == Alphabet::Std, &t.b64_std) {
-                        self.alphabet = Alphabet::Std;
-                    }
-                    if theme::selectable_label(
-                        ui,
-                        self.alphabet == Alphabet::UrlSafe,
-                        &t.b64_urlsafe,
-                    ) {
-                        self.alphabet = Alphabet::UrlSafe;
-                    }
-                });
-            });
-            ui.add_space(12.0);
-
-            theme::card(ui, |ui| {
-                ui.label(&t.gen_input);
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.input)
-                        .hint_text(t.b64_hint.clone())
-                        .margin(egui::Margin::symmetric(8, 14))
-                        .desired_width(f32::INFINITY)
-                        .vertical_align(egui::Align::Center),
-                );
-
-                ui.horizontal(|ui| {
-                    if ui.button(&t.gen_encode).clicked() {
-                        self.set_action(Action::Encode);
-                    }
-                    if ui.button(&t.gen_decode).clicked() {
-                        self.set_action(Action::Decode);
-                    }
-                });
-
-                if self.error {
-                    ui.colored_label(theme::ERROR, &t.b64_err_invalid);
+        theme::card(ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                theme::field_label(ui, &t.b64_alphabet);
+                ui.add_space(4.0);
+                let alphabet = if self.alphabet == Alphabet::Std { 0 } else { 1 };
+                if let Some(i) = theme::segmented(ui, alphabet, &[&t.b64_std, &t.b64_urlsafe]) {
+                    self.alphabet = if i == 0 { Alphabet::Std } else { Alphabet::UrlSafe };
                 }
-
-                ui.label(&t.gen_output);
-                ui.add(
-                    egui::TextEdit::multiline(&mut self.output)
-                        .desired_rows(4)
-                        .desired_width(f32::INFINITY),
-                );
-
-                ui.horizontal(|ui| {
-                    if !self.output.is_empty() {
-                        theme::copy_button(ui, &t.gen_copy, &self.output);
-                    }
-                });
+                ui.add_space(16.0);
+                let action = if self.action == Action::Encode { 0 } else { 1 };
+                if let Some(i) = theme::segmented(ui, action, &[&t.gen_encode, &t.gen_decode]) {
+                    self.set_action(if i == 0 { Action::Encode } else { Action::Decode });
+                }
             });
-            ui.add_space(8.0);
+        });
+        theme::card_gap(ui);
+
+        theme::card(ui, |ui| {
+            theme::field_label(ui, &t.gen_input);
+            theme::text_area(ui, &mut self.input, &t.b64_hint, 3, false);
+
+            if self.error {
+                theme::status(ui, theme::Level::Error, &t.b64_err_invalid);
+            }
+
+            ui.add_space(6.0);
+            theme::output_header(ui, &t.gen_output, &t.gen_copy, &self.output, |_| {});
+            theme::text_area(ui, &mut self.output, "", 4, true);
         });
     }
 

@@ -3,6 +3,20 @@
 
 带 UI 界面的开发工具集合, 纯 Rust + egui 实现, 跨平台 (Windows / Linux / macOS), 不依赖 C/C++ 代码。
 
+## 界面预览
+
+| 时间戳工具 (深色) | 字符集转换 (浅色) |
+| --- | --- |
+| ![时间戳工具](docs/screenshots/timestamp-dark.png) | ![字符集转换](docs/screenshots/encoding-light.png) |
+
+| URL 编解码 (深色) | 哈希计算 (浅色) |
+| --- | --- |
+| ![URL 编解码](docs/screenshots/url-dark.png) | ![哈希计算](docs/screenshots/hash-light.png) |
+
+| Base64 编解码 (深色) | 关于窗口 (浅色) |
+| --- | --- |
+| ![Base64 编解码](docs/screenshots/base64-dark.png) | ![关于窗口](docs/screenshots/about-light.png) |
+
 ## 功能
 
 1. 时间戳与时间格式化工具
@@ -22,7 +36,11 @@
 
 ## 特性
 
-- 深色主题界面, 输入框支持复制粘贴, 结果一键复制
+- 现代化界面: 左侧导航栏 + 卡片式内容区, 深色 / 浅色主题(默认跟随系统, 可手动切换)
+- 内置 [Inter](https://rsms.me/inter/) 可变字体渲染拉丁字母与数字, 中文等 CJK 文字回退到系统字体
+  (macOS 冬青黑体/苹方, Windows 微软雅黑, Linux Noto Sans CJK), 并自动解析字体度量对齐基线,
+  中英文混排不再上下错位
+- 输入框支持复制粘贴, 结果一键复制(带复制成功反馈)
 - 国际化: 简体中文 / 繁体中文 / English / 日本語
 - 语言文案存放于可执行文件同目录 `langs/*.json`, 无需改代码即可自行翻译或新增语言
 - Windows 二进制自动嵌入应用图标 (amd64 / arm64)
@@ -55,10 +73,24 @@
   cargo zigbuild --release --target aarch64-apple-darwin        # macOS Apple Silicon 架构
 ```
 
+### macOS 安装包
+
+```bash
+  scripts/package-macos.sh                                  # 通用二进制 (Apple Silicon + Intel)
+  ARCHS="aarch64-apple-darwin" scripts/package-macos.sh     # 仅 Apple Silicon
+  SIGN_IDENTITY="Developer ID Application: ..." scripts/package-macos.sh   # 用正式证书签名
+```
+
+脚本只依赖 macOS 自带的 `lipo` / `codesign` / `hdiutil`, 产物位于 `dist/`:
+`DevToolkit.app` 与 `DevToolkit-<version>-macos.dmg`。默认为 ad-hoc 签名,
+未经公证, 首次打开需按下文"运行"一节放行。
+
 ### 语言文件
 
 程序首次运行会在可执行文件同目录生成 `langs/` 并导出内置语言文件 (如 `zh-CN.json`),
 编辑 JSON 即可修改文案, 新增 JSON 文件 (如 `de.json`) 会作为新语言出现在界面中。
+macOS 上以 `.app` 运行时, 该目录位于 `~/Library/Application Support/devToolkit/langs`
+(bundle 内部受签名保护, 不可写入)。
 
 ## 运行
 

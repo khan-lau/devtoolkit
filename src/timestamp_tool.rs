@@ -119,22 +119,15 @@ impl TimestampTool {
 
     /// 渲染工具界面
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        let t = self.t.clone();
         self.update_now();
         self.update_ts_result();
         self.update_dt_result();
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new(&t.ts_title).size(20.0).strong());
-            ui.add_space(8.0);
-            theme::card(ui, |ui| self.section_now(ui));
-            ui.add_space(12.0);
-            theme::card(ui, |ui| self.section_ts_to_time(ui));
-            ui.add_space(12.0);
-            theme::card(ui, |ui| self.section_time_to_ts(ui));
-            ui.add_space(8.0);
-        });
+        theme::card(ui, |ui| self.section_now(ui));
+        theme::card_gap(ui);
+        theme::card(ui, |ui| self.section_ts_to_time(ui));
+        theme::card_gap(ui);
+        theme::card(ui, |ui| self.section_time_to_ts(ui));
     }
 
     /// 刷新当前时间显示(秒级去重)
@@ -163,95 +156,70 @@ impl TimestampTool {
     /// 当前时间区
     fn section_now(&mut self, ui: &mut egui::Ui) {
         let t = self.t.clone();
-        theme::section_title(ui, &t.ts_section_now);
-
-        egui::Grid::new("now_grid")
-            .num_columns(2)
-            .spacing([12.0, 8.0])
-            .show(ui, |ui| {
-                ui.label(&t.ts_local_time);
-                ui.horizontal(|ui| {
-                    ui.monospace(&self.now_time_str);
-                    if ui.small_button(&t.ts_refresh).clicked() {
-                        self.force_update_now();
-                    }
-                });
-                ui.end_row();
-
-                ui.label(&t.ts_millis);
-                ui.horizontal(|ui| {
-                    ui.monospace(self.now_ms.to_string());
-                    theme::copy_button(ui, &t.ts_copy, &self.now_ms.to_string());
-                });
-                ui.end_row();
-
-                ui.label(&t.ts_seconds);
-                ui.horizontal(|ui| {
-                    ui.monospace(self.now_s.to_string());
-                    theme::copy_button(ui, &t.ts_copy, &self.now_s.to_string());
-                });
-                ui.end_row();
+        ui.horizontal(|ui| {
+            theme::section_title(ui, &t.ts_section_now);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if theme::button(ui, &t.ts_refresh).clicked() {
+                    self.force_update_now();
+                }
             });
+        });
+        ui.add_space(6.0);
+
+        let ms = self.now_ms.to_string();
+        let s = self.now_s.to_string();
+        theme::result_block(ui, "now_grid", |ui| {
+            theme::result_row(ui, &t.ts_local_time, &self.now_time_str, &t.ts_copy);
+            theme::result_row(ui, &t.ts_millis, &ms, &t.ts_copy);
+            theme::result_row(ui, &t.ts_seconds, &s, &t.ts_copy);
+        });
     }
 
     /// 时间戳 -> 时间字符串
     fn section_ts_to_time(&mut self, ui: &mut egui::Ui) {
         let t = self.t.clone();
         theme::section_title(ui, &t.ts_ts_to_time);
+        ui.add_space(6.0);
 
+        theme::field_label(ui, &t.ts_timestamp);
         ui.horizontal(|ui| {
-            // 精确分配 70x20(与 add_sized 一致), 文字在区域内水平居左、垂直居中
-            let (rect, _) = ui.allocate_exact_size(egui::vec2(70.0, 20.0), egui::Sense::hover());
-            ui.painter().text(
-                rect.right_center(),
-                egui::Align2::RIGHT_CENTER,
-                &t.ts_timestamp,
-                egui::FontId::proportional(14.0),
-                theme::TEXT,
-            );
-
-            ui.add(
-                egui::TextEdit::singleline(&mut self.ts_input)
-                    .hint_text(t.ts_hint_ts.clone())
-                    .margin(egui::Margin::symmetric(8, 14))
-                    .desired_width(360.0)
-                    .vertical_align(egui::Align::Center),
-            );
-            if ui.button(&t.ts_fill_ms).clicked() {
+            theme::text_input(ui, &mut self.ts_input, &t.ts_hint_ts, 380.0);
+            if theme::button(ui, &t.ts_fill_ms).clicked() {
                 self.ts_input = self.now_ms.to_string();
             }
-            if ui.button(&t.ts_fill_s).clicked() {
+            if theme::button(ui, &t.ts_fill_s).clicked() {
                 self.ts_input = self.now_s.to_string();
             }
         });
 
+        ui.add_space(2.0);
         ui.horizontal(|ui| {
-            ui.label(&t.ts_unit);
-            if theme::selectable_label(ui, self.ts_unit == TsUnit::Auto, &t.ts_unit_auto) {
-                self.ts_unit = TsUnit::Auto;
-            }
-            if theme::selectable_label(ui, self.ts_unit == TsUnit::Seconds, &t.ts_unit_s) {
-                self.ts_unit = TsUnit::Seconds;
-            }
-            if theme::selectable_label(ui, self.ts_unit == TsUnit::Millis, &t.ts_unit_ms) {
-                self.ts_unit = TsUnit::Millis;
+            theme::field_label(ui, &t.ts_unit);
+            ui.add_space(4.0);
+            let selected = match self.ts_unit {
+                TsUnit::Auto => 0,
+                TsUnit::Seconds => 1,
+                TsUnit::Millis => 2,
+            };
+            if let Some(i) = theme::segmented(
+                ui,
+                selected,
+                &[&t.ts_unit_auto, &t.ts_unit_s, &t.ts_unit_ms],
+            ) {
+                self.ts_unit = [TsUnit::Auto, TsUnit::Seconds, TsUnit::Millis][i];
             }
         });
 
         match self.ts_error {
             Some(err) => {
-                ui.colored_label(theme::ERROR, err.msg(&t));
+                ui.add_space(2.0);
+                theme::status(ui, theme::Level::Error, &err.msg(&t));
             }
             None if !self.ts_out_local.is_empty() => {
-                ui.label(&t.ts_local_time);
-                ui.horizontal(|ui| {
-                    ui.monospace(&self.ts_out_local);
-                    theme::copy_button(ui, &t.ts_copy, &self.ts_out_local);
-                });
-                ui.label(&t.ts_utc_time);
-                ui.horizontal(|ui| {
-                    ui.monospace(&self.ts_out_utc);
-                    theme::copy_button(ui, &t.ts_copy, &self.ts_out_utc);
+                ui.add_space(4.0);
+                theme::result_block(ui, "ts_result", |ui| {
+                    theme::result_row(ui, &t.ts_local_time, &self.ts_out_local, &t.ts_copy);
+                    theme::result_row(ui, &t.ts_utc_time, &self.ts_out_utc, &t.ts_copy);
                 });
             }
             None => {}
@@ -262,44 +230,29 @@ impl TimestampTool {
     fn section_time_to_ts(&mut self, ui: &mut egui::Ui) {
         let t = self.t.clone();
         theme::section_title(ui, &t.ts_time_to_ts);
+        ui.add_space(6.0);
 
+        theme::field_label(ui, &t.ts_time_str);
         ui.horizontal(|ui| {
-            // 精确分配 70x20(与 add_sized 一致), 文字在区域内水平居左、垂直居中
-            let (rect, _) = ui.allocate_exact_size(egui::vec2(70.0, 20.0), egui::Sense::hover());
-            ui.painter().text(
-                rect.right_center(),
-                egui::Align2::RIGHT_CENTER,
-                &t.ts_time_str,
-                egui::FontId::proportional(14.0),
-                theme::TEXT,
-            );
-
-            ui.add(
-                egui::TextEdit::singleline(&mut self.dt_input)
-                    .hint_text(t.ts_hint_dt.clone())
-                    .margin(egui::Margin::symmetric(8, 14))
-                    .desired_width(360.0)
-                    .vertical_align(egui::Align::Center),
-            );
-            if ui.button(&t.ts_fill_now_time).clicked() {
+            theme::text_input(ui, &mut self.dt_input, &t.ts_hint_dt, 380.0);
+            if theme::button(ui, &t.ts_fill_now_time).clicked() {
                 self.dt_input = Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
             }
         });
+        theme::hint_text(ui, &t.ts_fmt_hint);
 
         match self.dt_error {
+            // 空输入属于常态, 不作为错误提示
+            Some(TsErr::Empty) => {}
             Some(err) => {
-                ui.colored_label(theme::ERROR, err.msg(&t));
+                ui.add_space(2.0);
+                theme::status(ui, theme::Level::Error, &err.msg(&t));
             }
             None if !self.dt_out_ms.is_empty() => {
-                ui.label(&t.ts_millis);
-                ui.horizontal(|ui| {
-                    ui.monospace(&self.dt_out_ms);
-                    theme::copy_button(ui, &t.ts_copy, &self.dt_out_ms);
-                });
-                ui.label(&t.ts_seconds);
-                ui.horizontal(|ui| {
-                    ui.monospace(&self.dt_out_s);
-                    theme::copy_button(ui, &t.ts_copy, &self.dt_out_s);
+                ui.add_space(4.0);
+                theme::result_block(ui, "dt_result", |ui| {
+                    theme::result_row(ui, &t.ts_millis, &self.dt_out_ms, &t.ts_copy);
+                    theme::result_row(ui, &t.ts_seconds, &self.dt_out_s, &t.ts_copy);
                 });
             }
             None => {}
