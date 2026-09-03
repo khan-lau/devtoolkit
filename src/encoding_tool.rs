@@ -138,7 +138,6 @@ impl EncodingTool {
             if let Some(i) = theme::chip_group(ui, &t.enc_charset, selected, &names) {
                 self.charset = Charset::ALL[i];
             }
-            theme::hint_text(ui, &t.enc_hex_note);
         });
         theme::card_gap(ui);
         theme::card(ui, |ui| self.section_decode(ui));
