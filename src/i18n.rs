@@ -143,7 +143,7 @@ pub struct Texts {
 
 impl Default for Texts {
     fn default() -> Self {
-        zh_cn()
+        return zh_cn();
     }
 }
 
@@ -173,12 +173,12 @@ impl I18n {
             export_builtin_langs(&dir, &langs);
             load_lang_files(&dir, &mut langs);
         }
-        Self { langs, current: 0 }
+        return Self { langs, current: 0 };
     }
 
     /// 当前语言的文案
     pub fn texts(&self) -> &Texts {
-        &self.langs[self.current].texts
+        return &self.langs[self.current].texts;
     }
 }
 
@@ -215,7 +215,7 @@ fn langs_dir() -> Option<PathBuf> {
                 .join("Library/Application Support/devToolkit/langs"),
         );
     }
-    Some(exe_dir.join("langs"))
+    return Some(exe_dir.join("langs"));
 }
 
 /// 导出内置语言文件作为翻译模板
@@ -290,16 +290,16 @@ fn load_lang_files(dir: &Path, langs: &mut Vec<LangDef>) {
 ///
 /// 显示名统一使用英文: 界面字体可能不包含对应语言字符集, 英文显示名可以避免乱码。
 fn builtin_langs() -> Vec<LangDef> {
-    vec![
+    return vec![
         LangDef { code: "zh-CN".into(), native_name: "Simplified Chinese".into(), texts: zh_cn() },
         LangDef { code: "zh-TW".into(), native_name: "Traditional Chinese".into(), texts: zh_tw() },
         LangDef { code: "en".into(), native_name: "English".into(), texts: en() },
         LangDef { code: "ja".into(), native_name: "Japanese".into(), texts: ja() },
-    ]
+    ];
 }
 
 fn zh_cn() -> Texts {
-    Texts {
+    return Texts {
         app_title: "开发工具包".into(),
         tab_timestamp: "时间戳工具".into(),
         tab_encoding: "字符集转换".into(),
@@ -388,11 +388,11 @@ fn zh_cn() -> Texts {
         checksum_algorithm: "算法".into(),
         checksum_hint: "输入要校验的数据".into(),
         checksum_key: "密钥 (Key)".into(),
-    }
+    };
 }
 
 fn zh_tw() -> Texts {
-    Texts {
+    return Texts {
         app_title: "開發工具包".into(),
         tab_timestamp: "時間戳工具".into(),
         tab_encoding: "字元集轉換".into(),
@@ -481,11 +481,11 @@ fn zh_tw() -> Texts {
         checksum_algorithm: "演算法".into(),
         checksum_hint: "輸入要校驗的資料".into(),
         checksum_key: "密鑰 (Key)".into(),
-    }
+    };
 }
 
 fn en() -> Texts {
-    Texts {
+    return Texts {
         app_title: "Dev Toolkit".into(),
         tab_timestamp: "Timestamp".into(),
         tab_encoding: "Encoding".into(),
@@ -574,11 +574,11 @@ fn en() -> Texts {
         checksum_algorithm: "Algorithm".into(),
         checksum_hint: "Enter data to verify".into(),
         checksum_key: "Key".into(),
-    }
+    };
 }
 
 fn ja() -> Texts {
-    Texts {
+    return Texts {
         app_title: "開発ツールキット".into(),
         tab_timestamp: "タイムスタンプ".into(),
         tab_encoding: "文字コード変換".into(),
@@ -667,5 +667,5 @@ fn ja() -> Texts {
         checksum_algorithm: "アルゴリズム".into(),
         checksum_hint: "検証するデータを入力".into(),
         checksum_key: "鍵 (Key)".into(),
-    }
+    };
 }

@@ -32,14 +32,14 @@ impl Charset {
     ];
 
     fn name(self) -> &'static str {
-        match self {
+        return match self {
             Charset::Utf8 => "UTF-8",
             Charset::Gbk => "GBK",
             Charset::Gb18030 => "GB18030",
             Charset::Big5 => "Big5",
             Charset::Utf16Le => "UTF-16 LE",
             Charset::Utf16Be => "UTF-16 BE",
-        }
+        };
     }
 }
 
@@ -61,13 +61,13 @@ enum EncErr {
 impl EncErr {
     /// 转换为当前语言的错误文案
     fn msg(self, t: &Texts) -> String {
-        match self {
+        return match self {
             EncErr::OddLength => t.enc_err_odd.to_string(),
             EncErr::NonHex => t.enc_err_nonhex.to_string(),
             EncErr::Utf16Odd => t.enc_err_utf16_odd.to_string(),
             EncErr::Utf16Pair => t.enc_err_utf16_pair.to_string(),
             EncErr::EscapeUtf16Only => t.enc_err_utf16_escape.to_string(),
-        }
+        };
     }
 }
 
@@ -103,7 +103,7 @@ pub struct EncodingTool {
 
 impl EncodingTool {
     pub fn new(t: Texts) -> Self {
-        Self {
+        return Self {
             t,
             charset: Charset::Utf8,
             hex_input: String::new(),
@@ -115,7 +115,7 @@ impl EncodingTool {
             encoded: String::new(),
             encode_status: Status::Idle,
             encode_last_key: (Charset::Utf8, String::new()),
-        }
+        };
     }
 
     /// 语言切换时更新文案
@@ -361,17 +361,17 @@ fn hex_to_bytes(input: &str, charset: Charset) -> Result<Vec<u8>, EncErr> {
         bytes.push((hi << 4) | lo);
         i += 2;
     }
-    Ok(bytes)
+    return Ok(bytes);
 }
 
 /// hex 字符转数值
 fn hex_val(c: char) -> Result<u8, EncErr> {
-    c.to_digit(16).map(|v| v as u8).ok_or(EncErr::NonHex)
+    return c.to_digit(16).map(|v| v as u8).ok_or(EncErr::NonHex);
 }
 
 /// 将 Unicode 码点字符按当前字符集编码为字节追加到输出
 fn append_char_bytes(out: &mut Vec<u8>, c: char, charset: Charset) {
-    match charset {
+    return match charset {
         Charset::Utf8 => {
             let mut buf = [0u8; 4];
             out.extend_from_slice(c.encode_utf8(&mut buf).as_bytes());
@@ -403,7 +403,7 @@ fn append_char_bytes(out: &mut Vec<u8>, c: char, charset: Charset) {
                 out.extend_from_slice(&u.to_be_bytes());
             }
         }
-    }
+    };
 }
 
 /// 按指定字符集将 hex 字符串解码为文本
@@ -457,7 +457,7 @@ fn decode_hex(input: &str, charset: Charset) -> (String, Status, Vec<&'static st
         }
     };
 
-    (text, status, possible_encodings(&bytes))
+    return (text, status, possible_encodings(&bytes));
 }
 
 /// 参与"可能编码"展示的多字节编码
@@ -530,7 +530,7 @@ fn possible_encodings(bytes: &[u8]) -> Vec<&'static str> {
         list.retain(|&e| e != best);
         list.insert(0, best);
     }
-    list
+    return list;
 }
 
 /// 检测字节序列中是否包含 GB18030 的 4 字节扩展序列
@@ -555,7 +555,7 @@ fn is_gb18030_ext(bytes: &[u8]) -> bool {
             i += 1;
         }
     }
-    false
+    return false;
 }
 
 /// 使用 chardetng 启发式猜测字节序列的最佳编码
@@ -567,7 +567,7 @@ fn guess_encoding(bytes: &[u8]) -> Option<&'static str> {
     }
     let mut detector = chardetng::EncodingDetector::new();
     detector.feed(bytes, true);
-    Some(detector.guess(None, true).name())
+    return Some(detector.guess(None, true).name());
 }
 
 /// 按指定字符集将文本编码为 hex 字符串
@@ -598,7 +598,7 @@ fn encode_hex(text: &str, charset: Charset) -> (String, Status) {
     };
 
     let status = warning.map(Status::Warn).unwrap_or(Status::Idle);
-    (bytes.iter().map(|b| format!("{b:02X}")).collect(), status)
+    return (bytes.iter().map(|b| format!("{b:02X}")).collect(), status);
 }
 
 /// 将 UTF-16 字节序列转为字符串
@@ -613,16 +613,15 @@ fn utf16_bytes_to_string(
         .chunks_exact(2)
         .map(|c| from_bytes([c[0], c[1]]))
         .collect();
-    String::from_utf16(&units).map_err(|_| EncErr::Utf16Pair)
+    return String::from_utf16(&units).map_err(|_| EncErr::Utf16Pair);
 }
 
 /// 跳过可选的 BOM 前缀
 fn strip_bom(bytes: &[u8], bom: [u8; 2]) -> &[u8] {
     if bytes.starts_with(&bom) {
-        &bytes[2..]
-    } else {
-        bytes
+        return &bytes[2..];
     }
+    return bytes;
 }
 
 #[cfg(test)]
@@ -630,15 +629,15 @@ mod tests {
     use super::*;
 
     fn b(s: &str) -> Vec<u8> {
-        s.as_bytes().to_vec()
+        return s.as_bytes().to_vec();
     }
 
     fn utf16le(s: &str) -> Vec<u8> {
-        s.encode_utf16().flat_map(u16::to_le_bytes).collect()
+        return s.encode_utf16().flat_map(u16::to_le_bytes).collect();
     }
 
     fn utf16be(s: &str) -> Vec<u8> {
-        s.encode_utf16().flat_map(u16::to_be_bytes).collect()
+        return s.encode_utf16().flat_map(u16::to_be_bytes).collect();
     }
 
     #[test]

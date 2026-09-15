@@ -40,38 +40,38 @@ impl Tab {
 
     /// 导航徽标上的简写
     fn mark(self) -> &'static str {
-        match self {
+        return match self {
             Tab::Timestamp => "TS",
             Tab::Encoding => "Aa",
             Tab::Url => "%",
             Tab::Base64 => "64",
             Tab::Hash => "#",
             Tab::Checksum => "✓",
-        }
+        };
     }
 
     /// 导航文字
     fn label(self, t: &Texts) -> &str {
-        match self {
+        return match self {
             Tab::Timestamp => &t.tab_timestamp,
             Tab::Encoding => &t.tab_encoding,
             Tab::Url => &t.tab_url,
             Tab::Base64 => &t.tab_base64,
             Tab::Hash => &t.tab_hash,
             Tab::Checksum => &t.tab_checksum,
-        }
+        };
     }
 
     /// 页面标题
     fn title(self, t: &Texts) -> &str {
-        match self {
+        return match self {
             Tab::Timestamp => &t.ts_title,
             Tab::Encoding => &t.enc_title,
             Tab::Url => &t.url_title,
             Tab::Base64 => &t.b64_title,
             Tab::Hash => &t.hash_title,
             Tab::Checksum => &t.checksum_title,
-        }
+        };
     }
 }
 
@@ -92,7 +92,7 @@ impl ToolkitApp {
     pub fn new() -> Self {
         let i18n = I18n::load();
         let t = i18n.texts().clone();
-        Self {
+        return Self {
             i18n,
             tab: Tab::Timestamp,
             show_about: false,
@@ -102,7 +102,7 @@ impl ToolkitApp {
             base64: Base64Tool::new(t.clone()),
             hash: HashTool::new(t.clone()),
             checksum: ChecksumTool::new(t),
-        }
+        };
     }
 }
 
@@ -406,7 +406,7 @@ fn nav_item(ui: &mut egui::Ui, selected: bool, mark: &str, title: &str) -> bool 
             fg,
         );
     }
-    resp.on_hover_cursor(CursorIcon::PointingHand).clicked()
+    return resp.on_hover_cursor(CursorIcon::PointingHand).clicked();
 }
 
 /// 侧边栏底部的通栏按钮
@@ -432,7 +432,7 @@ fn sidebar_button(ui: &mut egui::Ui, text: &str) -> bool {
             p.text_weak.lerp_to_gamma(p.text, hover),
         );
     }
-    resp.on_hover_cursor(CursorIcon::PointingHand).clicked()
+    return resp.on_hover_cursor(CursorIcon::PointingHand).clicked();
 }
 
 /// 主题切换按钮: 深色显示太阳, 浅色显示月亮
@@ -487,7 +487,7 @@ fn theme_toggle(ui: &mut egui::Ui) {
 /// 编译信息: 目标平台 + 构建类型
 fn build_info() -> String {
     let profile = if cfg!(debug_assertions) { "debug" } else { "release" };
-    format!("{} · {profile}", option_env!("BUILD_TARGET").unwrap_or("unknown"))
+    return format!("{} · {profile}", option_env!("BUILD_TARGET").unwrap_or("unknown"));
 }
 
 /// 从 Cargo.toml 的 authors 字段解析 (作者名, 联系方式)
@@ -500,8 +500,7 @@ fn cargo_author() -> (String, String) {
             .trim_end_matches('>')
             .trim()
             .to_string();
-        (name, email)
-    } else {
-        (author.to_string(), String::new())
+        return (name, email);
     }
+    return (author.to_string(), String::new());
 }

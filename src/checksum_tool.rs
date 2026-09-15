@@ -59,7 +59,7 @@ impl ChecksumAlgo {
 
     /// 算法显示名
     fn name(self) -> &'static str {
-        match self {
+        return match self {
             ChecksumAlgo::Crc8Smbus => "CRC-8 (SMBUS)",
             ChecksumAlgo::Crc16Ibm => "CRC-16 (IBM)",
             ChecksumAlgo::Crc16Modbus => "CRC-16 (MODBUS)",
@@ -73,23 +73,23 @@ impl ChecksumAlgo {
             ChecksumAlgo::HmacSha1 => "HMAC-SHA1",
             ChecksumAlgo::HmacSha256 => "HMAC-SHA256",
             ChecksumAlgo::HmacSha512 => "HMAC-SHA512",
-        }
+        };
     }
 
     /// 是否为 HMAC 算法(需要密钥输入)
     fn is_hmac(self) -> bool {
-        matches!(
+        return matches!(
             self,
             ChecksumAlgo::HmacMd5
                 | ChecksumAlgo::HmacSha1
                 | ChecksumAlgo::HmacSha256
                 | ChecksumAlgo::HmacSha512
-        )
+        );
     }
 
     /// 计算输入字节的校验结果(小写十六进制)
     fn compute(self, bytes: &[u8], key: &[u8]) -> String {
-        match self {
+        return match self {
             // CRC 系列
             ChecksumAlgo::Crc8Smbus => to_hex(&crc::Crc::<u8>::new(&crc::CRC_8_SMBUS).checksum(bytes).to_be_bytes()),
             ChecksumAlgo::Crc16Ibm => to_hex(&crc::Crc::<u16>::new(&crc::CRC_16_ARC).checksum(bytes).to_be_bytes()),
@@ -110,7 +110,7 @@ impl ChecksumAlgo {
             ChecksumAlgo::HmacSha1 => hmac_compute!(sha1::Sha1, bytes, key),
             ChecksumAlgo::HmacSha256 => hmac_compute!(sha2::Sha256, bytes, key),
             ChecksumAlgo::HmacSha512 => hmac_compute!(sha2::Sha512, bytes, key),
-        }
+        };
     }
 }
 
@@ -127,14 +127,14 @@ pub struct ChecksumTool {
 
 impl ChecksumTool {
     pub fn new(t: Texts) -> Self {
-        Self {
+        return Self {
             t,
             algo: ChecksumAlgo::Crc32,
             input: String::new(),
             key: String::new(),
             output: String::new(),
             last_key: (ChecksumAlgo::Crc32, String::new(), String::new()),
-        }
+        };
     }
 
     /// 语言切换时更新文案
@@ -197,7 +197,7 @@ fn to_hex(bytes: &[u8]) -> String {
     for b in bytes {
         s.push_str(&format!("{:02x}", b));
     }
-    s
+    return s;
 }
 
 #[cfg(test)]

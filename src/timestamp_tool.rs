@@ -45,13 +45,13 @@ pub enum TsErr {
 impl TsErr {
     /// 转换为当前语言的错误文案
     pub fn msg(self, t: &Texts) -> String {
-        match self {
+        return match self {
             TsErr::NotInteger => t.ts_err_not_int.to_string(),
             TsErr::OutOfRange => t.ts_err_range.to_string(),
             TsErr::Empty => t.ts_err_empty.to_string(),
             TsErr::ParseFailed => t.ts_err_parse.to_string(),
             TsErr::Ambiguous => t.ts_err_ambiguous.to_string(),
-        }
+        };
     }
 }
 
@@ -93,7 +93,7 @@ pub struct TimestampTool {
 impl TimestampTool {
     pub fn new(t: Texts) -> Self {
         let now = Local::now();
-        Self {
+        return Self {
             t,
             ts_input: String::new(),
             ts_unit: TsUnit::Auto,
@@ -109,7 +109,7 @@ impl TimestampTool {
             now_ms: now.timestamp_millis(),
             now_s: now.timestamp(),
             now_time_str: now.format("%Y-%m-%d %H:%M:%S%.3f").to_string(),
-        }
+        };
     }
 
     /// 语言切换时更新文案
@@ -322,10 +322,10 @@ fn timestamp_to_strings(input: &str, unit: TsUnit) -> Result<(String, String), T
     };
 
     let fmt = "%Y-%m-%d %H:%M:%S%.3f";
-    Ok((
+    return Ok((
         dt.format(fmt).to_string(),
         dt.with_timezone(&chrono::Utc).format(fmt).to_string(),
-    ))
+    ));
 }
 
 /// 时间字符串转换为 (毫秒时间戳, 秒时间戳)
@@ -357,20 +357,20 @@ fn datetime_to_timestamps(input: &str) -> Result<(i64, i64), TsErr> {
         }
     }
 
-    Err(TsErr::ParseFailed)
+    return Err(TsErr::ParseFailed);
 }
 
 /// 本地时区无歧义地将 NaiveDateTime 转为带时区的本地时间
 fn local_from_naive(ndt: NaiveDateTime) -> Result<DateTime<Local>, TsErr> {
-    Local
+    return Local
         .from_local_datetime(&ndt)
         .single()
-        .ok_or(TsErr::Ambiguous)
+        .ok_or(TsErr::Ambiguous);
 }
 
 /// 确定实际使用的时间戳单位
 fn effective_unit(unit: TsUnit, raw: i64) -> TsUnit {
-    match unit {
+    return match unit {
         TsUnit::Auto => {
             if raw.unsigned_abs().to_string().len() <= 10 {
                 TsUnit::Seconds
@@ -379,5 +379,5 @@ fn effective_unit(unit: TsUnit, raw: i64) -> TsUnit {
             }
         }
         other => other,
-    }
+    };
 }

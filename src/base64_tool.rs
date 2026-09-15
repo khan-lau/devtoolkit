@@ -38,7 +38,7 @@ pub struct Base64Tool {
 
 impl Base64Tool {
     pub fn new(t: Texts) -> Self {
-        Self {
+        return Self {
             t,
             alphabet: Alphabet::Std,
             action: Action::Encode,
@@ -46,7 +46,7 @@ impl Base64Tool {
             output: String::new(),
             error: false,
             last_key: (Alphabet::Std, Action::Encode, String::new()),
-        }
+        };
     }
 
     /// 语言切换时更新文案
@@ -126,10 +126,9 @@ impl Base64Tool {
 }
 
 /// 标准 Base64 字符表
-const B64_STD: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const B64_STD: &[u8; 64]      = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 /// URL 安全 Base64 字符表
-const B64_URL_SAFE: &[u8; 64] =
-    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const B64_URL_SAFE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
 /// 将文本编码为 Base64
 fn encode(text: &str, alphabet: Alphabet) -> String {
@@ -157,7 +156,7 @@ fn encode(text: &str, alphabet: Alphabet) -> String {
             '='
         });
     }
-    out
+    return out;
 }
 
 /// 将 Base64 解码为文本, 非法输入返回 Err
@@ -203,5 +202,5 @@ fn decode(input: &str, alphabet: Alphabet) -> Result<String, ()> {
     if nbits == 6 {
         return Err(());
     }
-    String::from_utf8(bytes).map_err(|_| ())
+    return String::from_utf8(bytes).map_err(|_| ());
 }

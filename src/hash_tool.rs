@@ -39,7 +39,7 @@ impl HashAlgo {
 
     /// 算法显示名
     fn name(self) -> &'static str {
-        match self {
+        return match self {
             HashAlgo::Md5 => "MD5",
             HashAlgo::Sha1 => "SHA-1",
             HashAlgo::Sha224 => "SHA-224",
@@ -49,7 +49,7 @@ impl HashAlgo {
             HashAlgo::Blake2b512 => "BLAKE2b-512",
             HashAlgo::Blake2s256 => "BLAKE2s-256",
             HashAlgo::Blake3 => "BLAKE3",
-        }
+        };
     }
 
     /// 计算输入字节的十六进制摘要
@@ -66,7 +66,7 @@ impl HashAlgo {
             HashAlgo::Blake2s256 => blake2::Blake2s256::digest(bytes).to_vec(),
             HashAlgo::Blake3 => blake3::hash(bytes).as_bytes().to_vec(),
         };
-        to_hex(&out)
+        return to_hex(&out);
     }
 }
 
@@ -82,13 +82,13 @@ pub struct HashTool {
 
 impl HashTool {
     pub fn new(t: Texts) -> Self {
-        Self {
+        return Self {
             t,
             algo: HashAlgo::Md5,
             input: String::new(),
             output: String::new(),
             last_key: (HashAlgo::Md5, String::new()),
-        }
+        };
     }
 
     /// 语言切换时更新文案
@@ -141,7 +141,7 @@ fn to_hex(bytes: &[u8]) -> String {
     for b in bytes {
         s.push_str(&format!("{:02x}", b));
     }
-    s
+    return s;
 }
 
 #[cfg(test)]

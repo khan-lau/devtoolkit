@@ -29,13 +29,13 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
 
-    eframe::run_native(
+    return eframe::run_native(
         "开发工具包",
         options,
         Box::new(|cc| {
             fonts::install(&cc.egui_ctx);
             theme::apply(&cc.egui_ctx);
-            Ok(Box::new(app::ToolkitApp::new()))
+            return Ok(Box::new(app::ToolkitApp::new()));
         }),
-    )
+    );
 }

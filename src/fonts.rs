@@ -37,7 +37,7 @@ struct VMetrics {
 impl VMetrics {
     /// 行高 = ascent - descent + lineGap
     fn height(&self) -> f32 {
-        self.ascent - self.descent + self.line_gap
+        return self.ascent - self.descent + self.line_gap;
     }
 }
 
@@ -49,14 +49,14 @@ struct Candidate {
 
 impl Candidate {
     fn new(path: impl Into<PathBuf>, index: u32) -> Self {
-        Self { path: path.into(), index }
+        return Self { path: path.into(), index };
     }
 }
 
 /// 安装全部字体到 egui 上下文
 pub fn install(ctx: &egui::Context) {
-    let mut fonts = FontDefinitions::default();
-    let latin_metrics = parse_metrics(INTER, 0);
+    let mut fonts = FontDefinitions::default(); // 1. 拿到默认字体定义
+    let latin_metrics = parse_metrics(INTER, 0); // 2. 解析 Inter 这种免费字体度量(字体的指标参数)
 
     fonts
         .font_data
@@ -103,7 +103,7 @@ pub fn install(ctx: &egui::Context) {
 /// 各平台的系统 CJK 字体候选: (主字体候选, CJK 扩展 B 区补充字体候选)
 fn system_candidates() -> (Vec<Candidate>, Vec<Candidate>) {
     if cfg!(target_os = "windows") {
-        (
+        return (
             vec![
                 Candidate::new(r"C:\Windows\Fonts\msyh.ttc", 0), // 微软雅黑 (Win7+ 默认)
                 Candidate::new(r"C:\Windows\Fonts\msjh.ttc", 0), // 微軟正黑體 (繁体系统)
@@ -138,9 +138,9 @@ fn system_candidates() -> (Vec<Candidate>, Vec<Candidate>) {
                 .into_iter()
                 .map(|p| Candidate::new(p, 0)),
         );
-        (main, extb)
+        return (main, extb);
     } else {
-        (
+        return (
             vec![
                 Candidate::new("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 0),
                 Candidate::new("/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc", 0),
@@ -176,7 +176,7 @@ fn find_asset_fonts(file_name: &str) -> Vec<PathBuf> {
             }
         }
     }
-    found
+    return found;
 }
 
 /// 读取第一个存在且可解析的候选字体, 返回 (字体数据, 修正后的索引)
@@ -194,7 +194,7 @@ fn load_first(candidates: &[Candidate]) -> Option<(Vec<u8>, u32)> {
             return Some((data, index));
         }
     }
-    None
+    return None;
 }
 
 /// 根据 egui 的排版公式计算回退字体的基线补偿
@@ -205,40 +205,58 @@ fn load_first(candidates: &[Candidate]) -> Option<(Vec<u8>, u32)> {
 /// `y_offset_factor` 会乘以字号, 因此以 em 为单位填入即可适配所有字号。
 fn baseline_tweak(primary: VMetrics, fallback: VMetrics) -> FontTweak {
     let offset = primary.ascent - fallback.ascent - 0.5 * (primary.height() - fallback.height());
-    FontTweak {
+    return FontTweak {
         y_offset_factor: offset,
         ..FontTweak::default()
-    }
+    };
 }
 
 // ---------------------------------------------------------------------------
 // 最小化 sfnt 解析: 仅读取 head / hhea / OS/2 三张表
 // ---------------------------------------------------------------------------
 
+/// 从字节切片 `d` 的偏移 `off` 处，安全读取一个 **2 字节大端序无符号整数**。
+///
+/// - 成功：返回 `Some(u16)`
+/// - 失败（越界）：返回 `None`
+///
+/// 大端序：高位字节在前，如 `0x1234` 存储为 `[0x12, 0x34]`。
 fn be_u16(d: &[u8], off: usize) -> Option<u16> {
-    Some(u16::from_be_bytes([*d.get(off)?, *d.get(off + 1)?]))
+    return Some(u16::from_be_bytes([*d.get(off)?, *d.get(off + 1)?]));
 }
 
+/// 从字节切片 `d` 的偏移 `off` 处，安全读取一个 **2 字节大端序有符号整数**。
+///
+/// 实现方式：先读 `u16`，再按位重新解释为 `i16`。
+/// `as i16` 不做数值转换，只是把同样的 16 位重新解释为有符号数。
+///
+/// 示例：
+/// - `0x0000` → `0`
+/// - `0x7FFF` → `32767`
+/// - `0xFFFF` → `-1`
 fn be_i16(d: &[u8], off: usize) -> Option<i16> {
-    be_u16(d, off).map(|v| v as i16)
+    return be_u16(d, off).map(|v| v as i16);
 }
 
+/// 从字节切片 `d` 的偏移 `off` 处，安全读取一个 **4 字节大端序无符号整数**。
+///
+/// - 成功：返回 `Some(u32)`
+/// - 失败（越界）：返回 `None`
 fn be_u32(d: &[u8], off: usize) -> Option<u32> {
-    Some(u32::from_be_bytes([
+    return Some(u32::from_be_bytes([
         *d.get(off)?,
         *d.get(off + 1)?,
         *d.get(off + 2)?,
         *d.get(off + 3)?,
-    ]))
+    ]));
 }
 
 /// TTC 内的字体数量(单字体文件返回 1)
 fn face_count(data: &[u8]) -> u32 {
     if data.get(0..4) == Some(b"ttcf") {
-        be_u32(data, 8).unwrap_or(1).max(1)
-    } else {
-        1
+        return be_u32(data, 8).unwrap_or(1).max(1);
     }
+    return 1;
 }
 
 /// 解析指定索引字体的纵向度量
@@ -280,14 +298,14 @@ fn parse_metrics(data: &[u8], index: u32) -> Option<VMetrics> {
     // OS/2: fsSelection @62, sTypoAscender @68, sTypoDescender @70, sTypoLineGap @72,
     //       usWinAscent @74, usWinDescent @76
     let typo = os2.and_then(|t| {
-        Some((
+        return Some((
             be_u16(t, 62)? & (1 << 7) != 0,
             be_i16(t, 68)?,
             be_i16(t, 70)?,
             be_i16(t, 72)?,
             be_u16(t, 74)?,
             be_u16(t, 76)?,
-        ))
+        ));
     });
 
     if let Some((true, asc, desc, gap, _, _)) = typo {
@@ -319,11 +337,7 @@ fn parse_metrics(data: &[u8], index: u32) -> Option<VMetrics> {
         }
     }
 
-    Some(VMetrics {
-        ascent: em(asc),
-        descent: em(desc),
-        line_gap: em(gap),
-    })
+    return Some(VMetrics { ascent: em(asc), descent: em(desc), line_gap: em(gap) });
 }
 
 #[cfg(test)]

@@ -42,7 +42,7 @@ pub struct UrlTool {
 
 impl UrlTool {
     pub fn new(t: Texts) -> Self {
-        Self {
+        return Self {
             t,
             mode: UrlMode::Std,
             action: Action::Encode,
@@ -50,7 +50,7 @@ impl UrlTool {
             output: String::new(),
             warn: false,
             last_key: (UrlMode::Std, Action::Encode, String::new()),
-        }
+        };
     }
 
     /// 语言切换时更新文案
@@ -143,7 +143,7 @@ fn encode(input: &str, mode: UrlMode) -> String {
             _ => out.push_str(&format!("%{b:02X}")),
         }
     }
-    out
+    return out;
 }
 
 /// 按指定模式解码 URL 编码的文本
@@ -178,15 +178,15 @@ fn decode(input: &str, mode: UrlMode) -> (String, bool) {
             }
         }
     }
-    (String::from_utf8_lossy(&out).into_owned(), warn)
+    return (String::from_utf8_lossy(&out).into_owned(), warn);
 }
 
 /// 十六进制字符对应的数值
 fn hex_val(b: u8) -> Option<u8> {
-    match b {
+    return match b {
         b'0'..=b'9' => Some(b - b'0'),
         b'a'..=b'f' => Some(b - b'a' + 10),
         b'A'..=b'F' => Some(b - b'A' + 10),
         _ => None,
-    }
+    };
 }

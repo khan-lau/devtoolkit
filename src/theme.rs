@@ -99,12 +99,15 @@ pub const LIGHT: Palette = Palette {
 
 /// 按明暗取调色板
 pub fn palette(dark: bool) -> &'static Palette {
-    if dark { &DARK } else { &LIGHT }
+    if dark {
+        return &DARK;
+    }
+    return &LIGHT;
 }
 
 /// 当前 UI 的调色板
 pub fn pal(ui: &Ui) -> &'static Palette {
-    palette(ui.visuals().dark_mode)
+    return palette(ui.visuals().dark_mode);
 }
 
 /// 控件圆角
@@ -189,18 +192,18 @@ fn visuals(p: &Palette, dark: bool) -> egui::Visuals {
     v.widgets.active = widget(p.raised, p.raised, p.accent, p.text);
     v.widgets.active.bg_stroke = Stroke::new(1.5, p.accent);
     v.widgets.open = widget(p.sunken, p.sunken, p.accent, p.text);
-    v
+    return v;
 }
 
 fn widget(bg: Color32, weak_bg: Color32, border: Color32, fg: Color32) -> egui::style::WidgetVisuals {
-    egui::style::WidgetVisuals {
+    return egui::style::WidgetVisuals {
         bg_fill: bg,
         weak_bg_fill: weak_bg,
         bg_stroke: Stroke::new(1.0, border),
         corner_radius: CornerRadius::same(RADIUS),
         fg_stroke: Stroke::new(1.0, fg),
         expansion: 0.0,
-    }
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -209,7 +212,7 @@ fn widget(bg: Color32, weak_bg: Color32, border: Color32, fg: Color32) -> egui::
 
 /// 指定字重的文本(Inter 可变字重; 回退字体忽略)
 pub fn weighted(text: impl Into<String>, size: f32, weight: f32) -> RichText {
-    RichText::new(text).size(size).variation(WGHT, weight)
+    return RichText::new(text).size(size).variation(WGHT, weight);
 }
 
 /// 页面标题
@@ -230,11 +233,11 @@ pub fn field_label(ui: &mut Ui, text: &str) {
 
 /// 等宽展示值(结果/时间戳等)
 pub fn mono_value(ui: &mut Ui, value: &str) -> Response {
-    ui.label(
+    return ui.label(
         RichText::new(value)
             .font(FontId::new(14.0, FontFamily::Monospace))
             .color(pal(ui).text),
-    )
+    );
 }
 
 /// 状态级别
@@ -266,7 +269,7 @@ pub fn status(ui: &mut Ui, level: Level, text: &str) {
 /// 卡片容器: 大圆角 + 细边框 + 宽松内边距, 占满可用宽度
 pub fn card<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
     let p = pal(ui);
-    egui::Frame::new()
+    return egui::Frame::new()
         .fill(p.surface)
         .stroke(Stroke::new(1.0, p.border))
         .corner_radius(CornerRadius::same(CARD_RADIUS))
@@ -275,9 +278,9 @@ pub fn card<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
             ui.set_width(ui.available_width());
             let ret = add_contents(ui);
             ui.allocate_space(vec2(ui.available_width(), 0.0));
-            ret
+            return ret;
         })
-        .inner
+        .inner;
 }
 
 /// 卡片之间的间距
@@ -292,13 +295,13 @@ pub fn card_gap(ui: &mut Ui) {
 /// 单行输入框; `width` 为 `f32::INFINITY` 时占满剩余宽度
 pub fn text_input(ui: &mut Ui, text: &mut String, hint: &str, width: f32) -> Response {
     let p = pal(ui);
-    ui.add(
+    return ui.add(
         egui::TextEdit::singleline(text)
             .hint_text(RichText::new(hint).color(p.text_faint))
             .margin(Margin::symmetric(12, 9))
             .desired_width(width)
             .vertical_align(egui::Align::Center),
-    )
+    );
 }
 
 /// 多行文本区; `mono` 为真时使用等宽字体(适合 hex / 摘要 / 编码结果)
@@ -312,7 +315,7 @@ pub fn text_area(ui: &mut Ui, text: &mut String, hint: &str, rows: usize, mono: 
     if mono {
         edit = edit.font(TextStyle::Monospace);
     }
-    ui.add(edit)
+    return ui.add(edit);
 }
 
 /// 输出区标题行: 左侧标签, 右侧复制按钮(有内容时) 与额外操作
@@ -358,13 +361,13 @@ pub fn layout(ui: &Ui, text: RichText, max_width: f32) -> Arc<Galley> {
     } else {
         egui::TextWrapMode::Extend
     };
-    egui::WidgetText::from(text.color(Color32::PLACEHOLDER))
-        .into_galley(ui, Some(wrap), max_width, TextStyle::Body)
+    return egui::WidgetText::from(text.color(Color32::PLACEHOLDER))
+        .into_galley(ui, Some(wrap), max_width, TextStyle::Body);
 }
 
 /// 布局按钮文字(500 字重)
 fn button_galley(ui: &Ui, text: &str, size: f32) -> Arc<Galley> {
-    layout(ui, weighted(text, size, 500.0), f32::INFINITY)
+    return layout(ui, weighted(text, size, 500.0), f32::INFINITY);
 }
 
 fn paint_button(ui: &mut Ui, text: &str, kind: ButtonKind) -> Response {
@@ -398,17 +401,17 @@ fn paint_button(ui: &mut Ui, text: &str, kind: ButtonKind) -> Response {
         painter.rect(rect, CornerRadius::same(RADIUS), fill, stroke, StrokeKind::Inside);
         painter.galley(rect.center() - galley.size() / 2.0, galley, fg);
     }
-    resp.on_hover_cursor(CursorIcon::PointingHand)
+    return resp.on_hover_cursor(CursorIcon::PointingHand);
 }
 
 /// 主要操作按钮(强调色)
 pub fn primary_button(ui: &mut Ui, text: &str) -> Response {
-    paint_button(ui, text, ButtonKind::Primary)
+    return paint_button(ui, text, ButtonKind::Primary);
 }
 
 /// 次要按钮(描边)
 pub fn button(ui: &mut Ui, text: &str) -> Response {
-    paint_button(ui, text, ButtonKind::Secondary)
+    return paint_button(ui, text, ButtonKind::Secondary);
 }
 
 /// 图标按钮的边长
@@ -448,7 +451,7 @@ pub fn copy_button(ui: &mut Ui, tooltip: &str, copy_text: &str) -> bool {
     }
     resp.on_hover_cursor(CursorIcon::PointingHand)
         .on_hover_text(tooltip);
-    clicked
+    return clicked;
 }
 
 /// 复制图标: 两个错位的圆角矩形
@@ -536,7 +539,7 @@ pub fn segmented(ui: &mut Ui, selected: usize, options: &[&str]) -> Option<usize
         painter.galley(seg.center() - galley.size() / 2.0, galley, fg);
         x += w + gap;
     }
-    clicked
+    return clicked;
 }
 
 /// 胶囊选项(可换行排列的单选): 返回是否被点击
@@ -562,7 +565,7 @@ pub fn chip(ui: &mut Ui, selected: bool, text: &str) -> bool {
         painter.rect(rect, CornerRadius::same(15), fill, Stroke::new(1.0, border), StrokeKind::Inside);
         painter.galley(rect.center() - galley.size() / 2.0, galley, fg);
     }
-    resp.on_hover_cursor(CursorIcon::PointingHand).clicked()
+    return resp.on_hover_cursor(CursorIcon::PointingHand).clicked();
 }
 
 /// 一行胶囊选项组: 标签 + 可换行的选项, 返回被点击的索引
@@ -578,7 +581,7 @@ pub fn chip_group(ui: &mut Ui, label: &str, selected: usize, options: &[&str]) -
             }
         }
     });
-    clicked
+    return clicked;
 }
 
 /// 下拉列表里的可选项(保留 egui 原生行为, 点击后释放焦点)
@@ -586,10 +589,9 @@ pub fn menu_item(ui: &mut Ui, selected: bool, text: impl Into<egui::WidgetText>)
     let resp = ui.add(egui::Button::selectable(selected, text).min_size(vec2(ui.available_width(), 30.0)));
     if resp.clicked() {
         ui.ctx().memory_mut(|m| m.surrender_focus(resp.id));
-        true
-    } else {
-        false
+        return true;
     }
+    return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -607,18 +609,18 @@ pub fn result_row(ui: &mut Ui, label: &str, value: &str, copy_tip: &str) {
 /// 结果区块: 淡底容器, 内部为 3 列 Grid(标签 / 值 / 操作)
 pub fn result_block<R>(ui: &mut Ui, id: &str, add_rows: impl FnOnce(&mut Ui) -> R) -> R {
     let p = pal(ui);
-    egui::Frame::new()
+    return egui::Frame::new()
         .fill(p.sunken)
         .stroke(Stroke::new(1.0, p.border))
         .corner_radius(CornerRadius::same(RADIUS + 2))
         .inner_margin(Margin::symmetric(14, 10))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            egui::Grid::new(id)
+            return egui::Grid::new(id)
                 .num_columns(3)
                 .spacing([16.0, 6.0])
                 .show(ui, add_rows)
-                .inner
+                .inner;
         })
-        .inner
+        .inner;
 }
