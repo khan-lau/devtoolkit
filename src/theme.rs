@@ -115,7 +115,7 @@ const RADIUS: u8 = 8;
 /// 卡片圆角
 const CARD_RADIUS: u8 = 12;
 /// 交互动画时长(秒)
-const ANIM: f32 = 0.12;
+pub const ANIM: f32 = 0.12;
 /// Inter 字重轴
 const WGHT: &str = "wght";
 

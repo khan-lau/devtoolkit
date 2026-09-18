@@ -139,6 +139,40 @@ pub struct Texts {
     pub checksum_algorithm: String,
     pub checksum_hint: String,
     pub checksum_key: String,
+
+    // HTTP 请求工具(类 Postman)
+    pub tab_http: String,
+    pub http_title: String,
+    pub http_url_hint: String,
+    pub http_send: String,
+    pub http_sending: String,
+    pub http_headers: String,
+    pub http_header_key: String,
+    pub http_header_val: String,
+    pub http_add: String,
+    pub http_remove: String,
+    pub http_body: String,
+    pub http_body_none: String,
+    pub http_body_raw: String,
+    pub http_body_form: String,
+    pub http_body_multipart: String,
+    pub http_raw_text: String,
+    pub http_multipart_hint: String,
+    pub http_ct_boundary: String,
+    pub http_form_key: String,
+    pub http_form_val: String,
+    pub http_raw_hint: String,
+    pub http_response: String,
+    pub http_resp_empty: String,
+    pub http_resp_headers: String,
+    pub http_resp_body: String,
+    pub http_history: String,
+    pub http_clear: String,
+    pub http_err_url: String,
+    pub http_err_header: String,
+    pub http_err_send: String,
+    pub http_warn_truncated: String,
+    pub http_warn_decode: String,
 }
 
 impl Default for Texts {
@@ -259,7 +293,19 @@ fn load_lang_files(dir: &Path, langs: &mut Vec<LangDef>) {
             eprintln!("[i18n] 读取语言文件失败: {}", path.display());
             continue;
         };
-        let file = match serde_json::from_str::<LangFile>(&content) {
+
+        // 先解析为 JSON, 将缺失字段用同名内置语言的翻译补齐
+        // (升级新增文案后, 旧的语言文件无需手动更新即可获得正确显示)
+        let mut value: serde_json::Value = match serde_json::from_str(&content) {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("[i18n] 语言文件 {} 解析失败: {e}", path.display());
+                continue;
+            }
+        };
+        merge_builtin_fields(&mut value, &code, langs);
+
+        let file = match serde_json::from_value::<LangFile>(value) {
             Ok(f) => f,
             Err(e) => {
                 eprintln!("[i18n] 语言文件 {} 解析失败: {e}", path.display());
@@ -278,6 +324,32 @@ fn load_lang_files(dir: &Path, langs: &mut Vec<LangDef>) {
                 native_name,
                 texts: file.texts,
             });
+        }
+    }
+}
+
+/// 语言文件中缺失的字段用同名内置语言的翻译补齐
+///
+/// `Texts` 的 serde 缺省兜底是中文, 若不合并, 旧版语言文件在非中文界面下
+/// 会出现中英混杂(新版新增的字段显示中文)。
+fn merge_builtin_fields(value: &mut serde_json::Value, code: &str, langs: &[LangDef]) {
+    let Some(builtin) = langs.iter().find(|l| l.code == code) else {
+        return;
+    };
+    let Ok(template) = serde_json::to_value(&builtin.texts) else {
+        return;
+    };
+    match value.get_mut("texts").and_then(|t| t.as_object_mut()) {
+        Some(texts) => {
+            if let Some(obj) = template.as_object() {
+                for (k, v) in obj {
+                    texts.entry(k.clone()).or_insert(v.clone());
+                }
+            }
+        }
+        None => {
+            // texts 字段缺失或类型错误: 整体使用内置翻译
+            value["texts"] = template;
         }
     }
 }
@@ -388,6 +460,38 @@ fn zh_cn() -> Texts {
         checksum_algorithm: "算法".into(),
         checksum_hint: "输入要校验的数据".into(),
         checksum_key: "密钥 (Key)".into(),
+        tab_http: "HTTP 请求".into(),
+        http_title: "HTTP 请求工具".into(),
+        http_url_hint: "https://httpbin.org/get".into(),
+        http_send: "发送".into(),
+        http_sending: "请求中…".into(),
+        http_headers: "请求头".into(),
+        http_header_key: "名称".into(),
+        http_header_val: "值".into(),
+        http_add: "添加".into(),
+        http_remove: "移除".into(),
+        http_body: "请求体".into(),
+        http_body_none: "无".into(),
+        http_body_raw: "原文".into(),
+        http_body_form: "URL 编码".into(),
+        http_body_multipart: "Form-Data".into(),
+        http_raw_text: "文本".into(),
+        http_multipart_hint: r"值以 @ 开头表示发送文件, 如 @C:\a.png 或 @/tmp/a.pdf".into(),
+        http_ct_boundary: "boundary 在发送时自动生成".into(),
+        http_form_key: "参数名".into(),
+        http_form_val: "参数值".into(),
+        http_raw_hint: "请求体内容(按原样发送)".into(),
+        http_response: "响应".into(),
+        http_resp_empty: "点击发送, 响应将显示在这里".into(),
+        http_resp_headers: "响应头".into(),
+        http_resp_body: "响应体".into(),
+        http_history: "历史记录".into(),
+        http_clear: "清空".into(),
+        http_err_url: "URL 需以 http:// 或 https:// 开头".into(),
+        http_err_header: "请求头包含非法字符".into(),
+        http_err_send: "请求失败".into(),
+        http_warn_truncated: "响应体过大, 已截断至前 10 MB".into(),
+        http_warn_decode: "响应体存在无法解码的字节, 已用 U+FFFD 替换".into(),
     };
 }
 
@@ -481,6 +585,38 @@ fn zh_tw() -> Texts {
         checksum_algorithm: "演算法".into(),
         checksum_hint: "輸入要校驗的資料".into(),
         checksum_key: "密鑰 (Key)".into(),
+        tab_http: "HTTP 請求".into(),
+        http_title: "HTTP 請求工具".into(),
+        http_url_hint: "https://httpbin.org/get".into(),
+        http_send: "傳送".into(),
+        http_sending: "請求中…".into(),
+        http_headers: "請求標頭".into(),
+        http_header_key: "名稱".into(),
+        http_header_val: "值".into(),
+        http_add: "新增".into(),
+        http_remove: "移除".into(),
+        http_body: "請求主體".into(),
+        http_body_none: "無".into(),
+        http_body_raw: "原文".into(),
+        http_body_form: "URL 編碼".into(),
+        http_body_multipart: "Form-Data".into(),
+        http_raw_text: "文字".into(),
+        http_multipart_hint: r"值以 @ 開頭表示傳送檔案, 如 @C:\a.png 或 @/tmp/a.pdf".into(),
+        http_ct_boundary: "boundary 於傳送時自動產生".into(),
+        http_form_key: "參數名稱".into(),
+        http_form_val: "參數值".into(),
+        http_raw_hint: "請求主體內容(按原樣傳送)".into(),
+        http_response: "回應".into(),
+        http_resp_empty: "點擊傳送, 回應將顯示在這裡".into(),
+        http_resp_headers: "回應標頭".into(),
+        http_resp_body: "回應主體".into(),
+        http_history: "歷史記錄".into(),
+        http_clear: "清空".into(),
+        http_err_url: "URL 需以 http:// 或 https:// 開頭".into(),
+        http_err_header: "請求標頭包含非法字元".into(),
+        http_err_send: "請求失敗".into(),
+        http_warn_truncated: "回應主體過大, 已截斷至前 10 MB".into(),
+        http_warn_decode: "回應主體存在無法解碼的位元組, 已用 U+FFFD 取代".into(),
     };
 }
 
@@ -574,6 +710,38 @@ fn en() -> Texts {
         checksum_algorithm: "Algorithm".into(),
         checksum_hint: "Enter data to verify".into(),
         checksum_key: "Key".into(),
+        tab_http: "HTTP Request".into(),
+        http_title: "HTTP Request Tool".into(),
+        http_url_hint: "https://httpbin.org/get".into(),
+        http_send: "Send".into(),
+        http_sending: "Sending…".into(),
+        http_headers: "Headers".into(),
+        http_header_key: "Name".into(),
+        http_header_val: "Value".into(),
+        http_add: "Add".into(),
+        http_remove: "Remove".into(),
+        http_body: "Body".into(),
+        http_body_none: "None".into(),
+        http_body_raw: "Raw".into(),
+        http_body_form: "URL-encoded".into(),
+        http_body_multipart: "Form-Data".into(),
+        http_raw_text: "Text".into(),
+        http_multipart_hint: "Prefix a value with @ to send a file, e.g. @C:\\a.png or @/tmp/a.pdf".into(),
+        http_ct_boundary: "boundary is generated automatically on send".into(),
+        http_form_key: "Field name".into(),
+        http_form_val: "Field value".into(),
+        http_raw_hint: "Request body (sent as-is)".into(),
+        http_response: "Response".into(),
+        http_resp_empty: "Send a request — the response will appear here".into(),
+        http_resp_headers: "Response Headers".into(),
+        http_resp_body: "Response Body".into(),
+        http_history: "History".into(),
+        http_clear: "Clear".into(),
+        http_err_url: "URL must start with http:// or https://".into(),
+        http_err_header: "Header contains invalid characters".into(),
+        http_err_send: "Request failed".into(),
+        http_warn_truncated: "Response too large, truncated to first 10 MB".into(),
+        http_warn_decode: "Some bytes could not be decoded, replaced with U+FFFD".into(),
     };
 }
 
@@ -582,7 +750,7 @@ fn ja() -> Texts {
         app_title: "開発ツールキット".into(),
         tab_timestamp: "タイムスタンプ".into(),
         tab_encoding: "文字コード変換".into(),
-        tab_url: "URL エンコード/デコード".into(),
+        tab_url: "URL 変換".into(),
         tab_base64: "Base64".into(),
         btn_about: "このアプリについて".into(),
         btn_close: "閉じる".into(),
@@ -600,8 +768,8 @@ fn ja() -> Texts {
         ts_millis: "ミリ秒タイムスタンプ".into(),
         ts_seconds: "秒タイムスタンプ".into(),
         ts_refresh: "更新".into(),
-        ts_fill_ms: "現在のミリ秒を入力".into(),
-        ts_fill_s: "現在の秒を入力".into(),
+        ts_fill_ms: "ミリ秒を入力".into(),
+        ts_fill_s: "秒を入力".into(),
         ts_fill_now_time: "現在時刻を入力".into(),
         ts_ts_to_time: "タイムスタンプ → 時刻文字列".into(),
         ts_time_to_ts: "時刻文字列 → タイムスタンプ".into(),
@@ -647,8 +815,8 @@ fn ja() -> Texts {
         gen_copy: "結果をコピー".into(),
         url_title: "URL エンコード/デコード".into(),
         url_mode: "モード".into(),
-        url_mode_std: "標準 (フォーム)".into(),
-        url_mode_safe: "セーフ (RFC 3986)".into(),
+        url_mode_std: "標準".into(),
+        url_mode_safe: "セーフ".into(),
         url_hint: "エンコードまたはデコードするテキストを入力".into(),
         url_note: "標準: 空白→+、A-Za-z0-9-_.* を保持; セーフ: 空白→%20、A-Za-z0-9-_.~!*'() を保持".into(),
         url_warn_invalid: "無効な % エスケープが見つかりましたが、そのまま保持しました".into(),
@@ -667,5 +835,68 @@ fn ja() -> Texts {
         checksum_algorithm: "アルゴリズム".into(),
         checksum_hint: "検証するデータを入力".into(),
         checksum_key: "鍵 (Key)".into(),
+        tab_http: "HTTP リクエスト".into(),
+        http_title: "HTTP リクエストツール".into(),
+        http_url_hint: "https://httpbin.org/get".into(),
+        http_send: "送信".into(),
+        http_sending: "送信中…".into(),
+        http_headers: "ヘッダー".into(),
+        http_header_key: "名前".into(),
+        http_header_val: "値".into(),
+        http_add: "追加".into(),
+        http_remove: "削除".into(),
+        http_body: "ボディ".into(),
+        http_body_none: "なし".into(),
+        http_body_raw: "テキスト".into(),
+        http_body_form: "URLエンコード".into(),
+        http_body_multipart: "Form-Data".into(),
+        http_raw_text: "テキスト".into(),
+        http_multipart_hint: "値の先頭に @ を付けるとファイルを送信(例: @C:\\a.png または @/tmp/a.pdf)".into(),
+        http_ct_boundary: "boundary は送信時に自動生成されます".into(),
+        http_form_key: "項目名".into(),
+        http_form_val: "値".into(),
+        http_raw_hint: "リクエストボディ(そのまま送信)".into(),
+        http_response: "レスポンス".into(),
+        http_resp_empty: "送信すると、レスポンスがここに表示されます".into(),
+        http_resp_headers: "レスポンスヘッダー".into(),
+        http_resp_body: "レスポンスボディ".into(),
+        http_history: "履歴".into(),
+        http_clear: "クリア".into(),
+        http_err_url: "URL は http:// または https:// で始まる必要があります".into(),
+        http_err_header: "ヘッダーに不正な文字が含まれています".into(),
+        http_err_send: "リクエスト失敗".into(),
+        http_warn_truncated: "レスポンスが大きすぎるため、先頭 10 MB に切り詰めました".into(),
+        http_warn_decode: "デコードできないバイトを U+FFFD に置換しました".into(),
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 旧版本语言文件缺少新增字段时, 用同名内置语言的翻译补齐(而非中文兜底)
+    #[test]
+    fn lang_file_missing_fields_fall_back_to_builtin() {
+        let dir = std::env::temp_dir().join(format!("devtoolkit-i18n-test-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        // 模拟升级前的 en.json: 只有最早的几个字段
+        fs::write(
+            dir.join("en.json"),
+            r#"{"name":"English","texts":{"app_title":"Dev Toolkit"}}"#,
+        )
+        .unwrap();
+
+        let mut langs = builtin_langs();
+        load_lang_files(&dir, &mut langs);
+        let _ = fs::remove_dir_all(&dir);
+
+        let en = langs.iter().find(|l| l.code == "en").unwrap();
+        // 用户已有的翻译保留
+        assert_eq!(en.texts.app_title, "Dev Toolkit");
+        // 缺失字段用内置英文补齐, 不回退到中文兜底
+        assert_eq!(en.texts.tab_checksum, "Checksum");
+        assert_eq!(en.texts.tab_http, "HTTP Request");
+        assert_eq!(en.texts.http_send, "Send");
+        assert_ne!(en.texts.tab_checksum, "校验工具");
+    }
 }

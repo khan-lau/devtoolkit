@@ -33,6 +33,17 @@
 5. 哈希计算工具 (MD5 / SHA-1 / SHA-224 / SHA-256 / SHA-384 / SHA-512 / BLAKE2b-512 / BLAKE2s-256 / BLAKE3)
 6. 校验计算工具 (CRC-8 / CRC-16 IBM / CRC-16 MODBUS / CRC-32 / CRC-32C / CRC-64 / BCC / LRC / SUM-8 / HMAC-MD5 / HMAC-SHA1 / HMAC-SHA256 / HMAC-SHA512)
    - HMAC 算法需输入密钥 (Key), 其余算法无需密钥
+7. HTTP 请求工具 (类 Postman)
+   - 方法 (GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS) + URL, 回车即发送
+   - 自定义请求头 (增删行, 发送前做合法性校验)
+   - 请求体四种模式, Content-Type 自动设置并实时显示在界面上:
+     - 无
+     - URL 编码 (`application/x-www-form-urlencoded; charset=utf-8`)
+     - Form-Data (`multipart/form-data; charset=utf-8; boundary=…` boundary 自动生成, 值以 `@` 开头表示发送文件)
+     - 原文 (Content-Type 可选 文本 / JSON / XML / HTML, 均显式声明 `charset=utf-8`)
+   - 响应: 状态码 / 耗时 / 大小 / 响应头 / 响应体
+     (按 Content-Type charset 解码, 缺省 UTF-8; JSON 可一键格式化)
+   - 请求在后台线程执行, 不阻塞界面; 会话内历史记录一键还原
 
 ## 特性
 
@@ -89,6 +100,8 @@
 
 程序首次运行会在可执行文件同目录生成 `langs/` 并导出内置语言文件 (如 `zh-CN.json`),
 编辑 JSON 即可修改文案, 新增 JSON 文件 (如 `de.json`) 会作为新语言出现在界面中。
+升级后旧语言文件中缺失的字段自动使用内置翻译补齐, 无需手动更新;
+自行翻译过的字段始终保留。
 macOS 上以 `.app` 运行时, 该目录位于 `~/Library/Application Support/devToolkit/langs`
 (bundle 内部受签名保护, 不可写入)。
 

@@ -9,6 +9,7 @@ use crate::base64_tool::Base64Tool;
 use crate::checksum_tool::ChecksumTool;
 use crate::encoding_tool::EncodingTool;
 use crate::hash_tool::HashTool;
+use crate::http_tool::HttpTool;
 use crate::i18n::{I18n, Texts};
 use crate::theme;
 use crate::timestamp_tool::TimestampTool;
@@ -26,16 +27,18 @@ enum Tab {
     Base64,
     Hash,
     Checksum,
+    Http,
 }
 
 impl Tab {
-    const ALL: [Tab; 6] = [
+    const ALL: [Tab; 7] = [
         Tab::Timestamp,
         Tab::Encoding,
         Tab::Url,
         Tab::Base64,
         Tab::Hash,
         Tab::Checksum,
+        Tab::Http,
     ];
 
     /// 导航徽标上的简写
@@ -47,6 +50,7 @@ impl Tab {
             Tab::Base64 => "64",
             Tab::Hash => "#",
             Tab::Checksum => "✓",
+            Tab::Http => "→",
         };
     }
 
@@ -59,6 +63,7 @@ impl Tab {
             Tab::Base64 => &t.tab_base64,
             Tab::Hash => &t.tab_hash,
             Tab::Checksum => &t.tab_checksum,
+            Tab::Http => &t.tab_http,
         };
     }
 
@@ -71,6 +76,7 @@ impl Tab {
             Tab::Base64 => &t.b64_title,
             Tab::Hash => &t.hash_title,
             Tab::Checksum => &t.checksum_title,
+            Tab::Http => &t.http_title,
         };
     }
 }
@@ -86,6 +92,7 @@ pub struct ToolkitApp {
     base64: Base64Tool,
     hash: HashTool,
     checksum: ChecksumTool,
+    http: HttpTool,
 }
 
 impl ToolkitApp {
@@ -101,7 +108,8 @@ impl ToolkitApp {
             url: UrlTool::new(t.clone()),
             base64: Base64Tool::new(t.clone()),
             hash: HashTool::new(t.clone()),
-            checksum: ChecksumTool::new(t),
+            checksum: ChecksumTool::new(t.clone()),
+            http: HttpTool::new(t),
         };
     }
 }
@@ -160,6 +168,7 @@ impl eframe::App for ToolkitApp {
             self.base64.set_lang(t.clone());
             self.hash.set_lang(t.clone());
             self.checksum.set_lang(t.clone());
+            self.http.set_lang(t.clone());
             ui.ctx()
                 .send_viewport_cmd(egui::ViewportCommand::Title(t.app_title.clone()));
         }
@@ -189,6 +198,7 @@ impl eframe::App for ToolkitApp {
                                     Tab::Base64 => self.base64.ui(ui),
                                     Tab::Hash => self.hash.ui(ui),
                                     Tab::Checksum => self.checksum.ui(ui),
+                                    Tab::Http => self.http.ui(ui),
                                 }
                             });
                     });
