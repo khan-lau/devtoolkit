@@ -82,6 +82,7 @@
   cargo zigbuild --release --target aarch64-unknown-linux-musl  # Linux aarch64 架构
   cargo zigbuild --release --target x86_64-apple-darwin         # macOS Intel 架构
   cargo zigbuild --release --target aarch64-apple-darwin        # macOS Apple Silicon 架构
+  cargo zigbuild --release --target universal2-apple-darwin     # macOS Universal mach-o fat 架构
 ```
 
 ### macOS 安装包

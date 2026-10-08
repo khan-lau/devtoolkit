@@ -24,7 +24,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha1 = "0.10"        # SHA-1 哈希
 sha2 = "0.10"        # SHA-224/256/384/512 哈希
-ureq = { version = "2", default-features = false, features = ["tls", "gzip", "charset"] } # HTTP 客户端 (rustls TLS, 纯 Rust 生态, 无系统 C 库依赖)
+ureq = { version = "2", default-features = false, features = ["tls", "gzip", "brotli", "charset"] } # HTTP 客户端 (rustls TLS, 纯 Rust 生态, 无系统 C 库依赖)
 
 [package.metadata.bundle]
 # name = "devToolkit"

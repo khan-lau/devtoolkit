@@ -65,12 +65,20 @@ impl Base64Tool {
                 ui.add_space(4.0);
                 let alphabet = if self.alphabet == Alphabet::Std { 0 } else { 1 };
                 if let Some(i) = theme::segmented(ui, alphabet, &[&t.b64_std, &t.b64_urlsafe]) {
-                    self.alphabet = if i == 0 { Alphabet::Std } else { Alphabet::UrlSafe };
+                    self.alphabet = if i == 0 {
+                        Alphabet::Std
+                    } else {
+                        Alphabet::UrlSafe
+                    };
                 }
                 ui.add_space(16.0);
                 let action = if self.action == Action::Encode { 0 } else { 1 };
                 if let Some(i) = theme::segmented(ui, action, &[&t.gen_encode, &t.gen_decode]) {
-                    self.set_action(if i == 0 { Action::Encode } else { Action::Decode });
+                    self.set_action(if i == 0 {
+                        Action::Encode
+                    } else {
+                        Action::Decode
+                    });
                 }
             });
         });
@@ -126,7 +134,7 @@ impl Base64Tool {
 }
 
 /// 标准 Base64 字符表
-const B64_STD: &[u8; 64]      = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const B64_STD: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 /// URL 安全 Base64 字符表
 const B64_URL_SAFE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 

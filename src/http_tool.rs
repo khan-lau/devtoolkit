@@ -19,7 +19,9 @@ use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use eframe::egui::{self, Color32, CursorIcon, FontFamily, FontId, Pos2, RichText, Sense, Ui, Vec2, vec2};
+use eframe::egui::{
+    self, Color32, CursorIcon, FontFamily, FontId, Pos2, RichText, Sense, Ui, Vec2, vec2,
+};
 use encoding_rs::Encoding;
 
 use crate::i18n::Texts;
@@ -97,19 +99,28 @@ impl HttpTool {
 /// 一次完整请求的参数(发送与历史还原共用)
 #[derive(Clone, PartialEq)]
 struct RequestSpec {
+    /// 请求方法
     method: String,
+    /// 请求 URL
     url: String,
+    /// 请求头
     headers: Vec<(String, String)>,
+    /// 请求体模式, none/form/multipart/raw,  raw 又分为 text/json/xml/html
     body_mode: BodyMode,
+    /// 原文请求体的内容类型
     raw_type: RawType,
+    /// 原文请求体
     body_raw: String,
+    /// 表单数据(仅 Form 模式有)
     form: Vec<(String, String)>,
 }
 
 /// 一次响应的完整信息
 struct HttpResponse {
     status: u16,
+    /// 状态码文本
     status_text: String,
+    /// 响应头
     headers: Vec<(String, String)>,
     /// 按 Content-Type charset 解码后的响应体
     body: String,
@@ -117,8 +128,11 @@ struct HttpResponse {
     pretty: Option<String>,
     /// 实际读取的原始字节数
     size: usize,
+    /// 响应体是否被截断
     truncated: bool,
+    /// 解码警告(响应体不是 UTF-8 编码)
     warn_decode: bool,
+    /// 请求耗时(请求 + 响应)
     elapsed: Duration,
 }
 
@@ -231,7 +245,11 @@ impl HttpTool {
                     .width(104.0)
                     .show_ui(ui, |ui| {
                         for m in METHODS {
-                            if theme::menu_item(ui, self.method == m, RichText::new(m).font(mono.clone())) {
+                            if theme::menu_item(
+                                ui,
+                                self.method == m,
+                                RichText::new(m).font(mono.clone()),
+                            ) {
                                 self.method = m.to_owned();
                             }
                         }
@@ -242,7 +260,8 @@ impl HttpTool {
                     if theme::primary_button(ui, &t.http_send).clicked() {
                         *send = true;
                     }
-                    let url_resp = theme::text_input(ui, &mut self.url, &t.http_url_hint, f32::INFINITY);
+                    let url_resp =
+                        theme::text_input(ui, &mut self.url, &t.http_url_hint, f32::INFINITY);
                     if url_resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                         *send = true;
                     }
@@ -259,7 +278,13 @@ impl HttpTool {
         theme::card(ui, |ui| {
             theme::field_label(ui, &t.http_headers);
             ui.add_space(2.0);
-            if let Some(i) = kv_rows(ui, &mut self.headers, &t.http_header_key, &t.http_header_val, &t.http_remove) {
+            if let Some(i) = kv_rows(
+                ui,
+                &mut self.headers,
+                &t.http_header_key,
+                &t.http_header_val,
+                &t.http_remove,
+            ) {
                 self.headers.remove(i);
             }
             if theme::button(ui, &t.http_add).clicked() {
@@ -302,7 +327,10 @@ impl HttpTool {
                 // 原文模式下选择 Content-Type 子类型
                 if self.body_mode == BodyMode::Raw {
                     ui.add_space(8.0);
-                    let raw_idx = RawType::ALL.iter().position(|&r| r == self.raw_type).unwrap_or(0);
+                    let raw_idx = RawType::ALL
+                        .iter()
+                        .position(|&r| r == self.raw_type)
+                        .unwrap_or(0);
                     let labels: Vec<&str> = RawType::ALL
                         .iter()
                         .map(|r| match r {
@@ -331,7 +359,13 @@ impl HttpTool {
                     theme::text_area(ui, &mut self.body_raw, &t.http_raw_hint, 4, true);
                 }
                 BodyMode::Form | BodyMode::Multipart => {
-                    if let Some(i) = kv_rows(ui, &mut self.form, &t.http_form_key, &t.http_form_val, &t.http_remove) {
+                    if let Some(i) = kv_rows(
+                        ui,
+                        &mut self.form,
+                        &t.http_form_key,
+                        &t.http_form_val,
+                        &t.http_remove,
+                    ) {
                         self.form.remove(i);
                     }
                     if theme::button(ui, &t.http_add).clicked() {
@@ -389,7 +423,10 @@ impl HttpTool {
                     // 响应头
                     if !resp.headers.is_empty() {
                         ui.add_space(4.0);
-                        theme::field_label(ui, &format!("{} ({})", t.http_resp_headers, resp.headers.len()));
+                        theme::field_label(
+                            ui,
+                            &format!("{} ({})", t.http_resp_headers, resp.headers.len()),
+                        );
                         egui::ScrollArea::vertical()
                             .max_height(150.0)
                             .id_salt("http_resp_headers")
@@ -424,7 +461,9 @@ impl HttpTool {
                         &resp.body
                     };
                     theme::output_header(ui, &t.http_resp_body, &t.gen_copy, shown, |ui| {
-                        if let Some(i) = theme::segmented(ui, body_view, &[&t.http_body_raw, "JSON"]) {
+                        if let Some(i) =
+                            theme::segmented(ui, body_view, &[&t.http_body_raw, "JSON"])
+                        {
                             body_view = i;
                         }
                     });
@@ -447,7 +486,11 @@ impl HttpTool {
                     }
                 }
                 Some(Err(e)) if !loading => {
-                    theme::status(ui, theme::Level::Error, &format!("{}: {e}", t.http_err_send));
+                    theme::status(
+                        ui,
+                        theme::Level::Error,
+                        &format!("{}: {e}", t.http_err_send),
+                    );
                 }
                 None if !loading => theme::hint_text(ui, &t.http_resp_empty),
                 _ => {}
@@ -584,7 +627,10 @@ fn perform(spec: &RequestSpec) -> Result<HttpResponse, String> {
     let result = match spec.body_mode {
         BodyMode::None => req.call(),
         BodyMode::Form => req
-            .set("Content-Type", "application/x-www-form-urlencoded; charset=utf-8")
+            .set(
+                "Content-Type",
+                "application/x-www-form-urlencoded; charset=utf-8",
+            )
             .send_string(&form_encode(&spec.form)),
         BodyMode::Multipart => match build_multipart(&spec.form) {
             Ok((boundary, bytes)) => req
@@ -738,7 +784,10 @@ fn history_row(ui: &mut Ui, method: &str, url: &str) -> bool {
         );
         let u_galley = theme::layout(ui, RichText::new(url).size(13.0), rect.width() - 70.0);
         painter.galley(
-            Pos2::new(rect.left() + 62.0, rect.center().y - u_galley.size().y / 2.0),
+            Pos2::new(
+                rect.left() + 62.0,
+                rect.center().y - u_galley.size().y / 2.0,
+            ),
             u_galley,
             p.text_weak.lerp_to_gamma(p.text, hover),
         );
@@ -798,7 +847,9 @@ fn form_url_encode(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for &b in s.as_bytes() {
         match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'*' => out.push(b as char),
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'*' => {
+                out.push(b as char)
+            }
             b' ' => out.push('+'),
             _ => out.push_str(&format!("%{b:02X}")),
         }
@@ -929,7 +980,10 @@ mod tests {
             charset_of("Text/HTML; CHARSET=\"utf-8\""),
             encoding_rs::UTF_8
         );
-        assert_eq!(charset_of("text/plain; charset=unknown-x"), encoding_rs::UTF_8);
+        assert_eq!(
+            charset_of("text/plain; charset=unknown-x"),
+            encoding_rs::UTF_8
+        );
     }
 
     #[test]
@@ -944,8 +998,14 @@ mod tests {
     #[test]
     fn raw_content_types() {
         assert_eq!(RawType::Text.content_type(), "text/plain; charset=utf-8");
-        assert_eq!(RawType::Json.content_type(), "application/json; charset=utf-8");
-        assert_eq!(RawType::Xml.content_type(), "application/xml; charset=utf-8");
+        assert_eq!(
+            RawType::Json.content_type(),
+            "application/json; charset=utf-8"
+        );
+        assert_eq!(
+            RawType::Xml.content_type(),
+            "application/xml; charset=utf-8"
+        );
         assert_eq!(RawType::Html.content_type(), "text/html; charset=utf-8");
     }
 
@@ -967,11 +1027,15 @@ mod tests {
     fn multipart_file_field() {
         // 临时文件(含非 UTF-8 二进制内容)验证文件字段
         let dir = std::env::temp_dir();
-        let path = dir.join(format!("devtoolkit-multipart-test-{}.bin", std::process::id()));
+        let path = dir.join(format!(
+            "devtoolkit-multipart-test-{}.bin",
+            std::process::id()
+        ));
         std::fs::write(&path, [0xFF, 0x00, 0xAB]).unwrap();
         let file_path = path.to_string_lossy().into_owned();
 
-        let (boundary, body) = build_multipart(&[("file".into(), format!("@{file_path}"))]).unwrap();
+        let (boundary, body) =
+            build_multipart(&[("file".into(), format!("@{file_path}"))]).unwrap();
         let _ = std::fs::remove_file(&path);
         let text = String::from_utf8_lossy(&body);
         let filename = Path::new(&file_path)
